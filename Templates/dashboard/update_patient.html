@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ patient.full_name }} ma'lumotlarini tahrirlash{% endblock %}
+
+{% block content %}
+<div class="container-fluid animate-fade-in">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="glass-card p-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h2 class="mb-0">
+                        <i class="fas fa-user-edit me-2"></i> {{ patient.full_name }} ma'lumotlarini tahrirlash
+                    </h2>
+                    <a href="{% url 'patient_detail' patient.id %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-1"></i> Bekor qilish
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="glass-card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-user-circle me-2"></i> Bemor ma'lumotlari</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <!-- Personal Information -->
+                        <div class="mb-4">
+                            <h6 class="mb-3 text-primary"><i class="fas fa-id-card me-2"></i> Shaxsiy ma'lumotlar</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="full_name" class="form-label">To'liq ismi</label>
+                                    <input type="text" class="form-control" id="full_name" name="full_name" 
+                                           value="{{ patient.full_name }}" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="phone_number" class="form-label">Telefon raqami</label>
+                                    <input type="text" class="form-control" id="phone_number" name="phone_number" 
+                                           value="{{ patient.phone_number }}" required>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="date_of_birth" class="form-label">Tug'ilgan sana</label>
+                                    <input type="date" class="form-control" id="date_of_birth" name="date_of_birth" 
+                                           value="{{ date_of_birth }}" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="gender" class="form-label">Jinsi</label>
+                                    <select class="form-select" id="gender" name="gender" required>
+                                        <option value="M" {% if patient.gender == 'M' %}selected{% endif %}>Erkak</option>
+                                        <option value="F" {% if patient.gender == 'F' %}selected{% endif %}>Ayol</option>
+                                        <option value="O" {% if patient.gender == 'O' %}selected{% endif %}>Boshqa</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Medical Status -->
+                        <div class="mb-4">
+                            <h6 class="mb-3 text-primary"><i class="fas fa-heartbeat me-2"></i> Tibbiy holat</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="last_coming" class="form-label">So'nggi tashrif</label>
+                                    <input type="date" class="form-control" id="last_coming" name="last_coming" 
+                                           value="{{ last_coming }}">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="status" class="form-label">Holati</label>
+                                    <select class="form-select" id="status" name="status" required>
+                                        <option value="active" {% if patient.status == 'active' %}selected{% endif %}>Faol</option>
+                                        <option value="inactive" {% if patient.status == 'inactive' %}selected{% endif %}>Nofaol</option>
+                                        <option value="pending" {% if patient.status == 'pending' %}selected{% endif %}>Kutilmoqda</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Additional Information -->
+                        <div class="mb-4">
+                            <h6 class="mb-3 text-primary"><i class="fas fa-info-circle me-2"></i> Qo'shimcha ma'lumotlar</h6>
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <label for="notes" class="form-label">Qo'shimcha eslatmalar</label>
+                                    <textarea class="form-control" id="notes" name="notes" rows="3">{{ patient.notes }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i> Saqlash
+                            </button>
+                            <a href="{% url 'patient_detail' patient.id %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-1"></i> Bekor qilish
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Calculate age when date of birth changes
+    const dobField = document.getElementById('date_of_birth');
+    const ageField = document.getElementById('age');
+    
+    if (dobField) {
+        dobField.addEventListener('change', function() {
+            if (this.value) {
+                const birthDate = new Date(this.value);
+                const today = new Date();
+                let age = today.getFullYear() - birthDate.getFullYear();
+                const monthDiff = today.getMonth() - birthDate.getMonth();
+                
+                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                    age--;
+                }
+                
+                // If you have an age field to display (optional)
+                if (ageField) {
+                    ageField.value = age;
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

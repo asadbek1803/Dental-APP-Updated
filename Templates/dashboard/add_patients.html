@@ -1,0 +1,508 @@
+{% extends 'base.html' %}
+
+{% block title %}Yangi Bemor Qo'shish - AI Tibbiy Ma'lumotlar Tizimi{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in">
+    <!-- Messages Display -->
+    {% if messages %}
+    <div class="container mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="text-white mb-2">
+                <i class="fas fa-user-plus me-3"></i>
+                Yangi Bemor Qo'shish
+            </h1>
+            <p class="text-white-50 mb-0">Tizimga yangi bemor ma'lumotlarini qo'shish</p>
+        </div>
+        <div>
+            <a href="{% url 'patients' %}" class="btn btn-outline-light me-2">
+                <i class="fas fa-arrow-left me-2"></i>
+                Bemorlar ro'yxati
+            </a>
+            <button class="btn btn-success" onclick="previewPatient()">
+                <i class="fas fa-eye me-2"></i>
+                Oldindan ko'rish
+            </button>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-number">{{ stats.total|default:"0" }}</div>
+                <div class="stat-label">Jami Bemorlar</div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, #10b981, #059669);">
+                <div class="stat-icon">
+                    <i class="fas fa-user-check"></i>
+                </div>
+                <div class="stat-number">{{ stats.active|default:"0" }}</div>
+                <div class="stat-label">Faol Bemorlar</div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                <div class="stat-icon">
+                    <i class="fas fa-user-clock"></i>
+                </div>
+                <div class="stat-number">{{ stats.pending|default:"0" }}</div>
+                <div class="stat-label">Kutilayotgan</div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                <div class="stat-icon">
+                    <i class="fas fa-calendar-plus"></i>
+                </div>
+                <div class="stat-number">{{ stats.today|default:"0" }}</div>
+                <div class="stat-label">Bugun Qo'shilgan</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Form -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="glass-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-edit me-2"></i>
+                        Bemor Ma'lumotlari
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="patientForm" novalidate>
+                        {% csrf_token %}
+                        <div class="row">
+                            <!-- Full Name -->
+                            <div class="col-12 mb-4">
+                                <label class="form-label fw-semibold">
+                                    <i class="fas fa-user me-2 text-primary"></i>
+                                    To'liq ismi
+                                    <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control form-control-lg" id="fullName" name="full_name" 
+                                       value="{{ form_data.full_name|default_if_none:'' }}" placeholder="Bemorning to'liq ismini kiriting..." required>
+                                <div class="invalid-feedback">
+                                    Iltimos, bemorning to'liq ismini kiriting.
+                                </div>
+                            </div>
+
+                            <!-- Date of Birth -->
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label fw-semibold">
+                                    <i class="fas fa-birthday-cake me-2 text-primary"></i>
+                                    Tug'ilgan sana
+                                    <span class="text-danger">*</span>
+                                </label>
+                                <input type="date" class="form-control" id="dateOfBirth" name="date_of_birth" 
+                                       value="{{ form_data.date_of_birth|default_if_none:'' }}" onchange="calculateAge()" required>
+                                <div class="invalid-feedback">
+                                    Iltimos, tug'ilgan sanani kiriting.
+                                </div>
+                            </div>
+
+                            <!-- Age (Auto-calculated) -->
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label fw-semibold">
+                                    <i class="fas fa-calendar-alt me-2 text-primary"></i>
+                                    Yosh
+                                </label>
+                                <input type="number" class="form-control" id="age" name="age" 
+                                       placeholder="Avtomatik hisoblanadi" readonly>
+                                <small class="text-muted">Tug'ilgan sana asosida avtomatik hisoblanadi</small>
+                            </div>
+
+                            <!-- Gender -->
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label fw-semibold">
+                                    <i class="fas fa-venus-mars me-2 text-primary"></i>
+                                    Jins
+                                    <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" id="gender" name="gender" required>
+                                    <option value="">Jinsni tanlang...</option>
+                                    <option value="M" {% if form_data.gender == 'M' %}selected{% endif %}>Erkak</option>
+                                    <option value="F" {% if form_data.gender == 'F' %}selected{% endif %}>Ayol</option>
+                                    <option value="O" {% if form_data.gender == 'O' %}selected{% endif %}>Boshqa</option>
+                                </select>
+                                <div class="invalid-feedback">
+                                    Iltimos, jinsni tanlang.
+                                </div>
+                            </div>
+
+                            <!-- Phone Number -->
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label fw-semibold">
+                                    <i class="fas fa-phone me-2 text-primary"></i>
+                                    Telefon raqami
+                                    <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">+998</span>
+                                    <input type="tel" class="form-control" id="phoneNumber" name="phone_number" 
+                                           value="{{ form_data.phone_number|default_if_none:'' }}" placeholder="90 123 45 67" required>
+                                </div>
+                                <div class="invalid-feedback">
+                                    Iltimos, to'g'ri telefon raqamini kiriting.
+                                </div>
+                                <small class="text-muted">Format: 90 123 45 67</small>
+                            </div>
+
+                            <!-- Status -->
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label fw-semibold">
+                                    <i class="fas fa-toggle-on me-2 text-primary"></i>
+                                    Holat
+                                </label>
+                                <select class="form-select" id="status" name="status">
+                                    <option value="active" {% if not form_data.status or form_data.status == 'active' %}selected{% endif %}>Faol</option>
+                                    <option value="inactive" {% if form_data.status == 'inactive' %}selected{% endif %}>Nofaol</option>
+                                    <option value="pending" {% if form_data.status == 'pending' %}selected{% endif %}>Kutilmoqda</option>
+                                </select>
+                            </div>
+
+                            <!-- Last Coming (Optional) -->
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label fw-semibold">
+                                    <i class="fas fa-calendar-check me-2 text-primary"></i>
+                                    So'nggi davolanish sanasi
+                                </label>
+                                <input type="date" class="form-control" id="lastComing" name="last_coming" 
+                                       value="{{ form_data.last_coming|default_if_none:'' }}">
+                                <small class="text-muted">Ixtiyoriy - agar avval davolanib bo'lgan bo'lsa</small>
+                            </div>
+
+                            <!-- Additional Notes -->
+                            <div class="col-12 mb-4">
+                                <label class="form-label fw-semibold">
+                                    <i class="fas fa-sticky-note me-2 text-primary"></i>
+                                    Qo'shimcha eslatmalar
+                                </label>
+                                <textarea class="form-control" id="additionalNotes" name="additional_notes" 
+                                          rows="3" placeholder="Bemor haqida qo'shimcha ma'lumotlar...">{{ form_data.additional_notes|default_if_none:'' }}</textarea>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="confirmData" required>
+                                <label class="form-check-label" for="confirmData">
+                                    Kiritilgan ma'lumotlar to'g'ri ekanligini tasdiqlayaman
+                                </label>
+                            </div>
+                            <div>
+                                <button type="button" class="btn btn-secondary me-2" onclick="resetForm()">
+                                    <i class="fas fa-undo me-2"></i>
+                                    Tozalash
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>
+                                    Bemorni Saqlash
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Panel -->
+        <div class="col-lg-4">
+            <div class="glass-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-eye me-2"></i>
+                        Oldindan Ko'rish
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <div class="avatar-lg bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                             style="width: 80px; height: 80px; font-size: 2rem;">
+                            <span id="previewAvatar">
+                                {% if form_data.full_name %}
+                                    {{ form_data.full_name|first|upper }}
+                                {% else %}
+                                    <i class="fas fa-user"></i>
+                                {% endif %}
+                            </span>
+                        </div>
+                        <h5 class="mb-1" id="previewName">
+                            {% if form_data.full_name %}
+                                {{ form_data.full_name }}
+                            {% else %}
+                                Bemor ismi
+                            {% endif %}
+                        </h5>
+                        <p class="text-muted mb-0">Yangi bemor</p>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="bg-light rounded p-3 text-center">
+                                <i class="fas fa-calendar-alt text-primary mb-2"></i>
+                                <div class="fw-bold" id="previewAge">
+                                    {% if form_data.date_of_birth %}
+                                        {{ age|default_if_none:'--' }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </div>
+                                <small class="text-muted">Yosh</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="bg-light rounded p-3 text-center">
+                                <i class="fas fa-venus-mars text-primary mb-2"></i>
+                                <div class="fw-bold" id="previewGender">
+                                    {% if form_data.gender == 'M' %}
+                                        Erkak
+                                    {% elif form_data.gender == 'F' %}
+                                        Ayol
+                                    {% elif form_data.gender == 'O' %}
+                                        Boshqa
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </div>
+                                <small class="text-muted">Jins</small>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="bg-light rounded p-3 text-center">
+                                <i class="fas fa-phone text-primary mb-2"></i>
+                                <div class="fw-bold" id="previewPhone">
+                                    {% if form_data.phone_number %}
+                                        +998 {{ form_data.phone_number }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </div>
+                                <small class="text-muted">Telefon</small>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="bg-light rounded p-3 text-center">
+                                <i class="fas fa-toggle-on text-primary mb-2"></i>
+                                <div class="fw-bold">
+                                    <span class="badge 
+                                        {% if not form_data.status or form_data.status == 'active' %}
+                                            bg-success
+                                        {% elif form_data.status == 'inactive' %}
+                                            bg-danger
+                                        {% else %}
+                                            bg-warning
+                                        {% endif %}" 
+                                        id="previewStatus">
+                                        {% if not form_data.status or form_data.status == 'active' %}
+                                            Faol
+                                        {% elif form_data.status == 'inactive' %}
+                                            Nofaol
+                                        {% else %}
+                                            Kutilmoqda
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                <small class="text-muted">Holat</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 p-3 bg-info bg-opacity-10 rounded">
+                        <h6 class="text-info mb-2">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Eslatma
+                        </h6>
+                        <small class="text-muted">
+                            Formani to'ldirganda o'ng tomonda bemor ma'lumotlarining ko'rinishi avtomatik yangilanadi.
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="glass-card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-bolt me-2"></i>
+                        Tezkor Amallar
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary btn-sm" onclick="fillSampleData()">
+                            <i class="fas fa-magic me-2"></i>
+                            Namuna ma'lumotlar
+                        </button>
+                        <button class="btn btn-outline-success btn-sm" onclick="validateForm()">
+                            <i class="fas fa-check-circle me-2"></i>
+                            Formani tekshirish
+                        </button>
+                        <button class="btn btn-outline-info btn-sm" onclick="showHelp()">
+                            <i class="fas fa-question-circle me-2"></i>
+                            Yordam
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Age calculation
+    function calculateAge() {
+        const birthDate = document.getElementById('dateOfBirth').value;
+        if (birthDate) {
+            const today = new Date();
+            const birth = new Date(birthDate);
+            let age = today.getFullYear() - birth.getFullYear();
+            const monthDiff = today.getMonth() - birth.getMonth();
+            
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+                age--;
+            }
+            
+            document.getElementById('age').value = age;
+            updatePreview();
+        }
+    }
+
+    // Phone number formatting
+    document.getElementById('phoneNumber').addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, '');
+        if (value.length <= 9) {
+            value = value.replace(/(\d{2})(\d{3})(\d{2})(\d{2})/, '$1 $2 $3 $4');
+            e.target.value = value.trim();
+        }
+        updatePreview();
+    });
+
+    // Real-time preview update
+    function updatePreview() {
+        const fullName = document.getElementById('fullName').value || 'Bemor ismi';
+        const age = document.getElementById('age').value || '--';
+        const gender = document.getElementById('gender').value;
+        const phone = document.getElementById('phoneNumber').value || '--';
+        const status = document.getElementById('status').value;
+
+        document.getElementById('previewName').textContent = fullName;
+        document.getElementById('previewAge').textContent = age + (age !== '--' ? ' yosh' : '');
+        
+        // Gender display
+        const genderText = gender === 'M' ? 'Erkak' : gender === 'F' ? 'Ayol' : gender === 'O' ? 'Boshqa' : '--';
+        document.getElementById('previewGender').textContent = genderText;
+        
+        // Phone display
+        document.getElementById('previewPhone').textContent = phone !== '--' ? '+998 ' + phone : '--';
+        
+        // Status display
+        const statusBadge = document.getElementById('previewStatus');
+        const statusText = status === 'active' ? 'Faol' : status === 'inactive' ? 'Nofaol' : 'Kutilmoqda';
+        const statusClass = status === 'active' ? 'bg-success' : status === 'inactive' ? 'bg-danger' : 'bg-warning';
+        
+        statusBadge.textContent = statusText;
+        statusBadge.className = `badge ${statusClass}`;
+
+        // Avatar initials
+        const initials = fullName.split(' ').map(name => name.charAt(0)).join('').substring(0, 2);
+        if (initials && initials !== 'Б') {
+            document.getElementById('previewAvatar').textContent = initials;
+        } else {
+            document.getElementById('previewAvatar').innerHTML = '<i class="fas fa-user"></i>';
+        }
+    }
+
+    // Event listeners for real-time updates
+    ['fullName', 'gender', 'status'].forEach(id => {
+        document.getElementById(id).addEventListener('input', updatePreview);
+        document.getElementById(id).addEventListener('change', updatePreview);
+    });
+
+    // Form validation and submission
+    document.getElementById('patientForm').addEventListener('submit', function(e) {
+        // Client-side validation
+        if (!this.checkValidity()) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.classList.add('was-validated');
+        }
+    });
+
+    // Utility functions
+    function resetForm() {
+        document.getElementById('patientForm').reset();
+        document.getElementById('patientForm').classList.remove('was-validated');
+        updatePreview();
+    }
+
+    function fillSampleData() {
+        document.getElementById('fullName').value = 'Aliyev Akbar Akbarovich';
+        document.getElementById('dateOfBirth').value = '1990-05-15';
+        document.getElementById('gender').value = 'M';
+        document.getElementById('phoneNumber').value = '90 123 45 67';
+        document.getElementById('status').value = 'active';
+        
+        calculateAge();
+        updatePreview();
+    }
+
+    function validateForm() {
+        const form = document.getElementById('patientForm');
+        const isValid = form.checkValidity();
+        
+        if (isValid) {
+            alert('✅ Forma to\'g\'ri to\'ldirilgan!');
+        } else {
+            alert('❌ Formada xatolar mavjud. Iltimos, barcha maydonlarni to\'ldiring.');
+            form.classList.add('was-validated');
+        }
+    }
+
+    function showHelp() {
+        alert(`📋 Yordam:
+
+• To'liq ism: Bemorning familiya, ism va otasining ismi
+• Tug'ilgan sana: Yosh avtomatik hisoblanadi
+• Telefon: +998 formatida, faqat raqamlar
+• Holat: Bemor faolligi (odatda "Faol" tanlanadi)
+
+Savollar bo'lsa administrator bilan bog'laning.`);
+    }
+
+    function previewPatient() {
+        updatePreview();
+        document.querySelector('.col-lg-4').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Initialize preview with any existing form data
+    document.addEventListener('DOMContentLoaded', function() {
+        updatePreview();
+        // If date of birth exists, calculate age
+        if (document.getElementById('dateOfBirth').value) {
+            calculateAge();
+        }
+    });
+</script>
+{% endblock %}

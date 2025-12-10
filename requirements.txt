@@ -1,0 +1,15 @@
+django
+Pillow
+django-cors-headers
+djangorestframework
+django-filter
+django-crispy-forms
+reportlab
+openpyxl 
+pandas
+xlwt
+django-select2
+xhtml2pdf
+gunicorn
+crispy_bootstrap5   
+xlsxwriter

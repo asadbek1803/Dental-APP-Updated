@@ -1,0 +1,565 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Sozlamalar{% endblock %}
+
+{% block content %}
+<div class="container-fluid animate-fade-in">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="text-white mb-0"><i class="fas fa-cog me-2"></i> Sozlamalar</h2>
+            <nav aria-label="breadcrumb" class="mt-2">
+                <ol class="breadcrumb bg-transparent p-0">
+                    <li class="breadcrumb-item"><a href="#" class="text-white">Bosh sahifa</a></li>
+                    <li class="breadcrumb-item active text-white-50" aria-current="page">Sozlamalar</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Left Navigation -->
+        <div class="col-md-3 mb-4">
+            <div class="glass-card p-3">
+                <div class="list-group list-group-flush">
+                    <a href="#profile-section" class="list-group-item list-group-item-action active" data-bs-toggle="list">
+                        <i class="fas fa-user-circle me-2"></i> Profil
+                    </a>
+                    {% if request.user.is_admin %}
+                    <a href="#account-section" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                        <i class="fas fa-users-cog me-2"></i> Foydalanuvchilar
+                    </a>
+                    <a href="#backup-section" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                        <i class="fas fa-database me-2"></i> Backup
+                    </a>
+                    {% endif %}
+                    <a href="#security-section" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                        <i class="fas fa-shield-alt me-2"></i> Xavfsizlik
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Content -->
+        <div class="col-md-9">
+            <div class="tab-content">
+                <!-- Profile Section -->
+                <div class="tab-pane fade show active" id="profile-section">
+                    <div class="glass-card p-4 mb-4">
+                        <h4 class="mb-4"><i class="fas fa-user-circle me-2"></i> Profil ma'lumotlari</h4>
+                        
+                        <form method="post" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <input type="hidden" name="form_type" value="profile">
+                         <div class="row align-items-center mb-4">
+                        <div class="col-auto text-center">
+                            <div class="avatar-upload">
+                                <div class="avatar-preview rounded-circle mx-auto"
+                                    style="
+                                        width: 120px;
+                                        height: 120px;
+                                        background-image: url({% if request.user.profile_image %}{{ request.user.profile_image.url }}{% else %}{% static 'default_profile_image.png' %}{% endif %});
+                                        background-size: cover;
+                                        background-position: center;
+                                        background-repeat: no-repeat;
+                                        overflow: hidden;
+                                    ">
+                                    
+                                </div>
+                                
+                                <div class="mt-3">
+                                    <input type="file" id="profile_image" name="profile_image" accept="image/*" class="d-none">
+                                    <label for="profile_image" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-camera me-1"></i> Rasmni o'zgartirish
+                                    </label>
+                                    {% if request.user.profile_image %}
+                                    <button type="button" class="btn btn-sm btn-outline-danger mt-1" id="remove-profile-image">
+                                        <i class="fas fa-trash me-1"></i> O'chirish
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Rasm formati <strong>.jpg</strong> yoki <strong>.png</strong> bo'lishi kerak. Maksimal hajmi <strong>2MB</strong>.
+                            </div>
+                        </div>
+                    </div>
+
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="firstName" class="form-label">Ism</label>
+                                    <input type="text" class="form-control" id="firstName" name="first_name" value="{{ request.user.first_name }}" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="lastName" class="form-label">Familiya</label>
+                                    <input type="text" class="form-control" id="lastName" name="last_name" value="{{ request.user.last_name }}" required>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Elektron pochta</label>
+                                <input type="email" class="form-control" id="email" name="email" value="{{ request.user.email|default:'' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="phone" class="form-label">Telefon raqam</label>
+                                <input type="tel" class="form-control" id="phone" name="phone" value="{{ request.user.phone }}" readonly>
+                                <div class="form-text">Telefon raqamni o'zgartirish uchun administratorga murojaat qiling</div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-end">
+                                <button type="submit" class="btn btn-primary px-4">
+                                    <i class="fas fa-save me-2"></i> Saqlash
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Password Change Section -->
+                    <div class="glass-card p-4">
+                        <h4 class="mb-4"><i class="fas fa-lock me-2"></i> Parolni o'zgartirish</h4>
+                        
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="form_type" value="password">
+                            
+                            <div class="mb-3">
+                                <label for="currentPassword" class="form-label">Joriy parol</label>
+                                <input type="password" class="form-control" id="currentPassword" name="current_password" required>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="newPassword" class="form-label">Yangi parol</label>
+                                    <input type="password" class="form-control" id="newPassword" name="new_password" required>
+                                    <div class="form-text">Kamida 8 ta belgi bo'lishi kerak</div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="confirmPassword" class="form-label">Parolni tasdiqlang</label>
+                                    <input type="password" class="form-control" id="confirmPassword" name="confirm_password" required>
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-end">
+                                <button type="submit" class="btn btn-primary px-4">
+                                    <i class="fas fa-key me-2"></i> Parolni yangilash
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                {% if request.user.is_admin %}
+                <!-- Account Section -->
+                <div class="tab-pane fade" id="account-section">
+                    <div class="glass-card p-4 mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h4 class="mb-0"><i class="fas fa-users-cog me-2"></i> Foydalanuvchilar</h4>
+                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                                <i class="fas fa-plus me-1"></i> Yangi foydalanuvchi
+                            </button>
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Foydalanuvchi</th>
+                                        <th>Telefon</th>
+                                        <th>Elektron pochta</th>
+                                        <th>Holati</th>
+                                        <th>Harakatlar</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for user in users %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                        <div class="avatar-sm rounded-circle me-2"
+                                            style="
+                                                width: 40px;
+                                                height: 40px;
+                                                background-size: cover;
+                                                background-position: center;
+                                                background-image: url('{% if user.profile_image %}{{ user.profile_image.url }}{% else %}{% static 'default_profile_image.png' %}{% endif %}');
+                                            ">
+                                            {% if not user.profile_image %}
+                                            <i class="fa-solid fa-circle-user me-2"></i>
+                                            {% endif %}
+                                        </div>
+                                        <span class="fw-semibold">{{ user.get_full_name }}</span>
+                                    </div>
+
+                                        </td>
+                                        <td>{{ user.phone }}</td>
+                                        <td>{{ user.email|default:"-" }}</td>
+                                        <td>
+                                            {% if user.is_active and not user.is_banned %}
+                                                <span class="badge bg-success">Faol</span>
+                                            {% elif user.is_banned %}
+                                                <span class="badge bg-danger">Bloklangan</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Nofaol</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="action-buttons">
+                                                <a href="{% url 'edit_user' user.id %}" class="btn btn-sm btn-outline-primary action-btn" title="Tahrirlash">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                {% if user.is_active and not user.is_banned %}
+                                                <button class="btn btn-sm btn-outline-warning action-btn ban-user" data-user-id="{{ user.id }}" title="Bloklash">
+                                                    <i class="fas fa-ban"></i>
+                                                </button>
+                                                {% elif user.is_banned %}
+                                                <button class="btn btn-sm btn-outline-success action-btn unban-user" data-user-id="{{ user.id }}" title="Blokdan chiqarish">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Add User Modal -->
+                    <div class="modal fade" id="addUserModal" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content glass-card">
+                                <div class="modal-header">
+                                    <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i> Yangi foydalanuvchi qo'shish</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <form method="post" id="add-user-form">
+                                    <div class="modal-body">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="form_type" value="add_user">
+                                        
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="newFirstName" class="form-label">Ism</label>
+                                                <input type="text" class="form-control" id="newFirstName" name="first_name" required>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label for="newLastName" class="form-label">Familiya</label>
+                                                <input type="text" class="form-control" id="newLastName" name="last_name" required>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="newPhone" class="form-label">Telefon raqam</label>
+                                            <input type="tel" class="form-control" id="newPhone" name="phone" pattern="\+998\d{9}" required>
+                                            <div class="form-text">Format: +998XXXXXXXXX</div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="newEmail" class="form-label">Elektron pochta</label>
+                                            <input type="email" class="form-control" id="newEmail" name="email">
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="userRole" class="form-label">Rol</label>
+                                            <select class="form-select" id="userRole" name="role" required>
+                                                <option value="">Tanlang...</option>
+                                                <option value="staff">Xodim</option>
+                                                <option value="admin">Administrator</option>
+                                                <option value="doctor">Shifokor</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="tempPassword" class="form-label">Vaqtinchalik parol</label>
+                                            <div class="input-group">
+                                                <input type="text" class="form-control" id="tempPassword" name="temp_password" value="{{ random_password }}" readonly>
+                                                <button class="btn btn-outline-secondary" type="button" id="generatePassword">
+                                                    <i class="fas fa-sync-alt"></i>
+                                                </button>
+                                            </div>
+                                            <div class="form-text">Foydalanuvchi birinchi marta tizimga kirganda parolni o'zgartirishi kerak</div>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Bekor qilish</button>
+                                        <button type="submit" class="btn btn-primary">Saqlash</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Backup Section -->
+                <div class="tab-pane fade" id="backup-section">
+                    <div class="glass-card p-4">
+                        <h4 class="mb-4"><i class="fas fa-database me-2"></i> Ma'lumotlar bazasini boshqarish</h4>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                <div class="glass-card h-100 p-4 text-center">
+                                    <div class="stat-icon text-primary mb-3">
+                                        <i class="fas fa-download"></i>
+                                    </div>
+                                    <h5 class="mb-3">Backup olish</h5>
+                                    <p class="text-muted mb-4">Ma'lumotlar bazasining to'liq nusxasini yuklab olish</p>
+                                    <a href="{% url 'backup_database' %}" class="btn btn-primary">
+                                        <i class="fas fa-file-export me-2"></i> Backup yaratish
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-4">
+                                <div class="glass-card h-100 p-4 text-center">
+                                    <div class="stat-icon text-danger mb-3">
+                                        <i class="fas fa-upload"></i>
+                                    </div>
+                                    <h5 class="mb-3">Backup yuklash</h5>
+                                    <p class="text-muted mb-4">Oldingi backup faylini yuklash orqali ma'lumotlarni tiklash</p>
+                                    
+                                    <form method="post" enctype="multipart/form-data" action="{% url 'upload_backup' %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="form_type" value="restore_backup">
+                                        <div class="mb-3">
+                                            <input type="file" class="form-control" id="backupFile" name="backup_file" accept=".sql,.db,.sqlite,.sqlite3" required>
+                                        </div>
+                                        <button type="submit" class="btn btn-danger">
+                                            <i class="fas fa-file-import me-2"></i> Backup yuklash
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-warning">
+                            <h5><i class="fas fa-exclamation-triangle me-2"></i> Ehtiyot bo'ling!</h5>
+                            <ul class="mb-0">
+                                <li>Backup yuklash joriy ma'lumotlarni o'chirib tashlaydi</li>
+                                <li>Faqat ishonchli manbalardan olingan backup fayllarini yuklang</li>
+                                <li>Yuklash jarayoni bir necha daqiqa vaqt olishi mumkin</li>
+                                <li>Backup fayllarini muntazam ravishda saqlab boring</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Security Section -->
+                <div class="tab-pane fade" id="security-section">
+                    <div class="glass-card p-4 mb-4">
+                        <h4 class="mb-4"><i class="fas fa-shield-alt me-2"></i> Kirishlar tarixi</h4>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Sana</th>
+                                        <th>IP manzil</th>
+                                        <th>Qurilma</th>
+                                        <th>Holat</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for login in login_history %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>{{ login.last_login|date:"Y-m-d H:i" }}</td>
+                                        <td>{{ login.ip_address|default:"-" }}</td>
+                                        <td>{{ login.user_agent|truncatechars:30 }}</td>
+                                        <td>
+                                            {% if login.success %}
+                                            <span class="badge bg-success">Muvaffaqiyatli</span>
+                                            {% else %}
+                                            <span class="badge bg-danger">Muvaffaqiyatsiz</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-4">Kirishlar tarixi topilmadi</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card p-4">
+                        <h4 class="mb-4"><i class="fas fa-lock me-2"></i> Xavfsizlik sozlamalari</h4>
+                        
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="form_type" value="security_settings">
+                            
+                            <div class="mb-4">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="twoFactorAuth" name="two_factor_auth" {% if request.user.two_factor_auth %}checked{% endif %}>
+                                    <label class="form-check-label" for="twoFactorAuth">Ikki bosqichli autentifikatsiya (2FA)</label>
+                                </div>
+                                <div class="form-text">Hisobingizni qo'shimcha himoya qilish uchun SMS orqali tasdiqlash</div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="sessionTimeout" name="session_timeout" {% if request.user.session_timeout %}checked{% endif %}>
+                                    <label class="form-check-label" for="sessionTimeout">Avtomatik sessiyani tugatish</label>
+                                </div>
+                                <div class="form-text">30 daqiqa ishlatilmasa sessiya avtomatik ravishda tugatiladi</div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-end">
+                                <button type="submit" class="btn btn-primary px-4">
+                                    <i class="fas fa-save me-2"></i> Sozlamalarni saqlash
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Generate random password
+    document.getElementById('generatePassword').addEventListener('click', function() {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+        let password = '';
+        for (let i = 0; i < 12; i++) {
+            password += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        document.getElementById('tempPassword').value = password;
+    });
+    
+    // Preview profile image before upload
+    document.getElementById('profile_image').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                document.querySelector('.avatar-preview').style.backgroundImage = `url(${event.target.result})`;
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+    
+    // Remove profile image
+    document.getElementById('remove-profile-image').addEventListener('click', function() {
+        if (confirm('Profil rasmini o\'chirishni tasdiqlaysizmi?')) {
+            fetch('{% url "remove_profile_image" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({})
+            }).then(response => response.json())
+              .then(data => {
+                  if (data.success) {
+                      document.querySelector('.avatar-preview').style.backgroundImage = `url({% static 'default_profile_image.png' %})`;
+                      this.remove();
+                  }
+              });
+        }
+    });
+    
+    // Initialize tab functionality
+    const triggerTabList = [].slice.call(document.querySelectorAll('a[data-bs-toggle="list"]'));
+    triggerTabList.forEach(function (triggerEl) {
+        const tabTrigger = new bootstrap.Tab(triggerEl);
+        
+        triggerEl.addEventListener('click', function (event) {
+            event.preventDefault();
+            tabTrigger.show();
+        });
+    });
+    
+// Ban/Unban user functionality
+document.querySelectorAll('.ban-user, .unban-user').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        const userId = this.dataset.userId;
+        const isBanAction = this.classList.contains('ban-user');
+        const action = isBanAction ? 'ban' : 'unban';
+        const actionText = isBanAction ? 'bloklashni' : 'blokdan chiqarishni';
+        
+        if (!confirm(`Foydalanuvchini ${actionText} tasdiqlaysizmi?`)) {
+            return;
+        }
+
+        // Show loading state
+        const originalContent = this.innerHTML;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        this.disabled = true;
+
+        try {
+            const response = await fetch('{% url "toggle_user_ban" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({
+                    user_id: userId,
+                    action: action
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Server xatosi');
+            }
+
+            if (data.success) {
+                showToast('success', `Foydalanuvchi muvaffaqiyatli ${actionText.replace('ni', '')}di!`);
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                throw new Error(data.error || 'Amal muvaffaqiyatsiz tugadi');
+            }
+        } catch (error) {
+            console.error('Xatolik:', error);
+            showToast('error', `Xatolik yuz berdi: ${error.message}`);
+        } finally {
+            this.innerHTML = originalContent;
+            this.disabled = false;
+        }
+    });
+});
+// Helper function to show toast messages
+function showToast(type, message) {
+    const toast = document.createElement('div');
+    toast.className = `toast show align-items-center text-white bg-${type}`;
+    toast.style.position = 'fixed';
+    toast.style.bottom = '20px';
+    toast.style.right = '20px';
+    toast.style.zIndex = '9999';
+    
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                ${message}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+</script>
+{% endblock %}

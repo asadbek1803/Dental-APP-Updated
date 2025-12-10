@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+
+{% block title %}Qo'shimcha To'lov - AI Tibbiy Ma'lumotlar Tizimi{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in">
+    <div class="glass-card p-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="text-white">
+                <i class="fas fa-money-bill-wave me-2"></i>
+                Qo'shimcha To'lov Qo'shish
+            </h2>
+            <a href="{% url 'payment' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>
+                Orqaga
+            </a>
+        </div>
+
+        <div class="glass-card p-4 mb-4">
+            <h5 class="text-white mb-3">
+                <i class="fas fa-info-circle me-2"></i>
+                To'lov Ma'lumotlari
+            </h5>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <strong>Bemor:</strong>
+                    <p class="text-black">{{ patient.full_name }}</p>
+                </div>
+                <div class="col-md-6">
+                    <strong>Telefon:</strong>
+                    <p class="text-black">{{ patient.phone_number }}</p>
+                </div>
+                <div class="col-md-4">
+                    <strong>Umumiy summa:</strong>
+                    <p class="text-primary fw-semibold">{{ payment.total_amount|floatformat:0 }} so'm</p>
+                </div>
+                <div class="col-md-4">
+                    <strong>To'langan:</strong>
+                    <p class="text-success fw-semibold">{{ payment.paid_amount|floatformat:0 }} so'm</p>
+                </div>
+                <div class="col-md-4">
+                    <strong>Qoldiq qarz:</strong>
+                    <p class="text-danger fw-semibold">{{ payment.debt|floatformat:0 }} so'm</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-card p-4">
+            <h5 class="text-white mb-3">
+                <i class="fas fa-plus-circle me-2"></i>
+                Qo'shimcha To'lov
+            </h5>
+            <form method="POST" action="{% url 'add-payment' payment.id %}">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">To'lov Summasi (so'm)</label>
+                        <input type="number" class="form-control" name="additional_payment" 
+                               min="0.01" max="{{ payment.debt }}" step="0.01" 
+                               placeholder="0.00" required>
+                        <small class="text-muted">Maksimal: {{ payment.debt|floatformat:0 }} so'm</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">To'lov Usuli</label>
+                        <select class="form-select" name="payment_method" required>
+                            <option value="">To'lov usulini tanlang</option>
+                            <option value="cash" {% if payment.payment_method == 'cash' %}selected{% endif %}>Naqd pul</option>
+                            <option value="card" {% if payment.payment_method == 'card' %}selected{% endif %}>Karta</option>
+                            <option value="online" {% if payment.payment_method == 'online' %}selected{% endif %}>Onlayn to'lov</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Izoh (ixtiyoriy)</label>
+                        <textarea class="form-control" name="note" rows="2"
+                                  placeholder="Qo'shimcha to'lov haqida izoh..."></textarea>
+                    </div>
+                    <div class="col-12">
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{% url 'payment' %}" class="btn btn-secondary">
+                                <i class="fas fa-times me-2"></i>
+                                Bekor qilish
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-check me-2"></i>
+                                To'lovni Tasdiqlash
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Auto-validate payment amount
+    document.addEventListener('DOMContentLoaded', function() {
+        const paymentInput = document.querySelector('input[name="additional_payment"]');
+        const maxAmount = parseFloat("{{ payment.debt }}");
+        
+        paymentInput.addEventListener('change', function() {
+            const enteredAmount = parseFloat(this.value) || 0;
+            
+            if (enteredAmount > maxAmount) {
+                alert(`Kiritilgan summa qarz miqdoridan (${maxAmount} so'm) oshib ketdi!`);
+                this.value = maxAmount.toFixed(2);
+            }
+            
+            if (enteredAmount <= 0) {
+                alert("To'lov summasi 0 dan katta bo'lishi kerak!");
+                this.value = '';
+            }
+        });
+    });
+</script>
+{% endblock %}

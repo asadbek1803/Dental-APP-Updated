@@ -1,0 +1,328 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ patient.full_name }} - Bemor ma'lumotlari{% endblock %}
+
+{% block content %}
+<div class="container-fluid animate-fade-in">
+    <!-- Patient Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="glass-card p-4">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="avatar bg-primary text-white d-flex align-items-center justify-content-center rounded-circle avatar-lg" style="width: 80px; height: 80px; font-size: 2rem;">
+                            {{ patient.full_name|first|upper }}
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h2 class="mb-1">{{ patient.full_name }}</h2>
+                                <div class="d-flex flex-wrap gap-3">
+                                    <span class="badge bg-primary rounded-pill">
+                                        <i class="fas fa-venus-mars me-1"></i> {{ patient.get_gender_display }}
+                                    </span>
+                                    <span class="badge bg-info rounded-pill">
+                                        <i class="fas fa-birthday-cake me-1"></i> {{ patient.age }} yosh
+                                    </span>
+                                    <span class="badge bg-{% if patient.status == 'active' %}success{% elif patient.status == 'inactive' %}danger{% else %}warning{% endif %} rounded-pill">
+                                        {{ patient.get_status_display }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div>
+                                <a href="{% url 'patient_update' patient.id %}" class="btn btn-primary me-2">
+                                    <i class="fas fa-edit me-1"></i> Tahrirlash
+                                </a>
+                                <a href="{% url 'patients' %}" class="btn btn-outline-primary">
+                                    <i class="fas fa-arrow-left me-1"></i> Orqaga
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Patient Information -->
+    <div class="row">
+        <!-- Left Column - Basic Info and Payment -->
+        <div class="col-lg-4">
+            <!-- Basic Information Card -->
+            <div class="glass-card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i> Asosiy ma'lumotlar</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-phone me-2 text-primary"></i> Telefon:</span>
+                            <span class="fw-bold">{{ patient.phone_number }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-calendar-day me-2 text-primary"></i> Tug'ilgan sana:</span>
+                            <span class="fw-bold">{{ patient.date_of_birth|date:"d.m.Y" }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-calendar-check me-2 text-primary"></i> Ro'yxatdan o'tgan sana:</span>
+                            <span class="fw-bold">{{ patient.visit_date|date:"d.m.Y H:i" }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-history me-2 text-primary"></i> So'nggi tashrif:</span>
+                            <span class="fw-bold">
+                                {% if patient.last_coming %}
+                                    {{ patient.last_coming|date:"d.m.Y" }}
+                                {% else %}
+                                    <span class="text-muted">Ma'lumot yo'q</span>
+                                {% endif %}
+                            </span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Payment Information Card -->
+            <div class="glass-card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-money-bill-wave me-2"></i> To'lov tarixi</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="mb-0">Oxirgi to'lov:</h6>
+                        <span class="badge bg-success rounded-pill">
+                            {% if last_payment %}
+                                {{ last_payment.amount }} so'm - {{ last_payment.payment_date|date:"d.m.Y" }}
+                            {% else %}
+                                <span class="text-muted">To'lov yo'q</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="mb-0">Jami to'langan:</h6>
+                        <span class="badge bg-primary rounded-pill">
+                            {{ total_paid }} so'm
+                        </span>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">Qarzdorlik:</h6>
+                        <span class="badge bg-{% if debt > 0 %}danger{% else %}success{% endif %} rounded-pill">
+                            {{ debt }} so'm
+                        </span>
+                    </div>
+                    
+                    {% if debt > 0 %}
+                    <div class="mt-3">
+                        <button class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#paymentModal">
+                            <i class="fas fa-money-bill me-1"></i> To'lov qilish
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column - Medical Information -->
+        <div class="col-lg-8">
+            <!-- Medical Assessments -->
+            <div class="glass-card mb-4">
+                <div class="card-header bg-info text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-file-medical me-2"></i> Tibbiy baholashlar</h5>
+                        <a href="#" class="btn btn-sm btn-light">
+                            <i class="fas fa-plus me-1"></i> Yangi baholash
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if medical_assessments %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Sana</th>
+                                        <th>Holat</th>
+                                        <th>Tashxis</th>
+                                        <th>MHSHB</th>
+                                        <th>Amallar</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for assessment in medical_assessments %}
+                                    <tr>
+                                        <td>{{ assessment.assessment_date|date:"d.m.Y" }}</td>
+                                        <td>
+                                            <span class="badge bg-{% if assessment.patient_condition == 'caries' %}warning
+                                                {% elif assessment.patient_condition == 'periodontitis' %}danger
+                                                {% elif assessment.patient_condition == 'gingivitis' %}info
+                                                {% else %}secondary{% endif %}">
+                                                {{ assessment.get_patient_condition_display }}
+                                            </span>
+                                        </td>
+                                        <td>{{ assessment.diagnosis|truncatechars:30 }}</td>
+                                        <td>{{ assessment.total_mhshb }} so'm</td>
+                                        <td>
+                                            <div class="action-buttons">
+                                                <a href="{% url 'assessment_detail' assessment.id %}" class="btn btn-sm btn-primary action-btn" title="Ko'rish">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <a href="{% url 'assessment_edit' assessment.id %}" class="btn btn-sm btn-warning action-btn" title="Tahrirlash">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle me-2"></i> Bemor uchun tibbiy baholashlar mavjud emas.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Medical Records -->
+            <div class="glass-card mb-4">
+                <div class="card-header bg-secondary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-notes-medical me-2"></i> Tibbiy yozuvlar</h5>
+                        <a href="#" class="btn btn-sm btn-light">
+                            <i class="fas fa-plus me-1"></i> Yangi yozuv
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if medical_records %}
+                        <div class="accordion" id="recordsAccordion">
+                            {% for record in medical_records %}
+                            <div class="accordion-item border-0 mb-2">
+                                <h2 class="accordion-header" id="heading{{ record.id }}">
+                                    <button class="accordion-button collapsed bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ record.id }}" aria-expanded="false" aria-controls="collapse{{ record.id }}">
+                                        <i class="fas fa-calendar-day me-2 text-primary"></i> {{ record.record_date|date:"d.m.Y" }}
+                                    </button>
+                                </h2>
+                                <div id="collapse{{ record.id }}" class="accordion-collapse collapse" aria-labelledby="heading{{ record.id }}" data-bs-parent="#recordsAccordion">
+                                    <div class="accordion-body bg-white rounded-bottom">
+                                        {{ record.description|linebreaks }}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle me-2"></i> Bemor uchun tibbiy yozuvlar mavjud emas.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Rengen Images -->
+            <div class="glass-card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="fas fa-x-ray me-2"></i> Rentgen rasmlari</h5>
+                </div>
+                <div class="card-body">
+                    {% if rengen_images %}
+                        <div class="row">
+                            {% for assessment in rengen_images %}
+                                {% if assessment.rengen_image %}
+                                <div class="col-md-4 mb-3">
+                                    <div class="card border-0 shadow-sm h-100">
+                                        <img src="{{ assessment.rengen_image.url }}" class="card-img-top" alt="Rentgen rasmi" style="height: 200px; object-fit: cover;">
+                                        <div class="card-body">
+                                            <h6 class="card-title">{{ assessment.assessment_date|date:"d.m.Y" }}</h6>
+                                            <p class="card-text small text-muted">{{ assessment.get_patient_condition_display }}</p>
+                                        </div>
+                                        <div class="card-footer bg-transparent border-0">
+                                            <a href="{{ assessment.rengen_image.url }}" target="_blank" class="btn btn-sm btn-outline-primary w-100">
+                                                <i class="fas fa-expand me-1"></i> Kattalashtirish
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle me-2"></i> Bemor uchun rentgen rasmlari mavjud emas.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Modal -->
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="paymentModalLabel">To'lov qilish</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'patient_detail' patient.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="amount" class="form-label">To'lov miqdori (so'm)</label>
+                        <input type="number" class="form-control" id="amount" name="amount" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="payment_method" class="form-label">To'lov usuli</label>
+                        <select class="form-select" id="payment_method" name="payment_method" required>
+                            <option value="" disabled selected>Tanlang</option>
+                            <option value="cash">Naqd pul</option>
+                            <option value="card">Karta</option>
+                            <option value="online">Online</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="paid_amount" class="form-control">
+                            To'langan summa (so'm)
+
+                        </label>
+                        <input type="number" class="form-control" id="paid_amount" name="paid_amount" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="payment_date" class="form-label">To'lov sanasi</label>
+                        <input type="date" class="form-control" id="payment_date" name="payment_date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Izoh</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Bekor qilish</button>
+                    <button type="submit" class="btn btn-success">To'lovni tasdiqlash</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Set today's date as default for payment date
+    document.addEventListener('DOMContentLoaded', function() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('payment_date').value = today;
+        
+        // Set max payment amount as debt
+        const debt = {{ debt }};
+        if (debt > 0) {
+            document.getElementById('amount').max = debt;
+        }
+    });
+</script>
+{% endblock %}

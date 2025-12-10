@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+
+{% block title %}To'lovni Tahrirlash - AI Tibbiy Ma'lumotlar Tizimi{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in">
+    <div class="glass-card p-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="text-white">
+                <i class="fas fa-edit me-2"></i>
+                To'lovni Tahrirlash
+            </h2>
+            <a href="{% url 'payment' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>
+                Orqaga
+            </a>
+        </div>
+
+        <div class="glass-card p-4">
+            <form method="POST" action="{% url 'edit-payment' payment.id %}">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <!-- Patient Information (readonly) -->
+                    <div class="col-md-6">
+                        <label class="form-label">Bemor</label>
+                        <input type="text" class="form-control bg-dark text-white" 
+                               value="{{ payment.patient.full_name }}" readonly>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Telefon</label>
+                        <input type="text" class="form-control bg-dark text-white" 
+                               value="{{ payment.patient.phone_number }}" readonly>
+                    </div>
+                    
+                    <!-- Payment Amount Fields -->
+                    <div class="col-md-4">
+                        <label class="form-label">Umumiy Summa (so'm)</label>
+                        <input type="number" class="form-control" name="total_amount" 
+                               value="{{ payment.total_amount|floatformat:2 }}" 
+                               min="0" step="0.01" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">To'langan Summa (so'm)</label>
+                        <input type="number" class="form-control" name="paid_amount" 
+                               value="{{ payment.paid_amount|floatformat:2 }}" 
+                               min="0" step="0.01" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Qoldiq Qarz (so'm)</label>
+                        <input type="text" class="form-control bg-dark text-white" 
+                               value="{{ payment.debt|floatformat:2 }}" readonly>
+                    </div>
+                    
+                    <!-- Payment Method -->
+                    <div class="col-md-6">
+                        <label class="form-label">To'lov Usuli</label>
+                        <select class="form-select" name="payment_method" required>
+                            <option value="cash" {% if payment.payment_method == 'cash' %}selected{% endif %}>Naqd pul</option>
+                            <option value="card" {% if payment.payment_method == 'card' %}selected{% endif %}>Karta</option>
+                            <option value="online" {% if payment.payment_method == 'online' %}selected{% endif %}>Onlayn to'lov</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Payment Date -->
+                    <div class="col-md-6">
+                        <label class="form-label">To'lov Sanasi</label>
+                        <input type="date" class="form-control" name="payment_date" 
+                               value="{{ payment.payment_date|date:'Y-m-d' }}" required>
+                    </div>
+                    
+                    <!-- Note Field -->
+                    <div class="col-12">
+                        <label class="form-label">Izoh (ixtiyoriy)</label>
+                        <textarea class="form-control" name="note" rows="3">{{ payment.note }}</textarea>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="col-12">
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{% url 'payment' %}" class="btn btn-secondary">
+                                <i class="fas fa-times me-2"></i>
+                                Bekor qilish
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>
+                                Saqlash
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Auto-calculate debt when amounts change
+    document.addEventListener('DOMContentLoaded', function() {
+        const totalAmountInput = document.querySelector('input[name="total_amount"]');
+        const paidAmountInput = document.querySelector('input[name="paid_amount"]');
+        const debtField = document.querySelector('input[readonly][value="{{ payment.debt|floatformat:2 }}"]');
+        
+        function calculateDebt() {
+            const total = parseFloat(totalAmountInput.value) || 0;
+            const paid = parseFloat(paidAmountInput.value) || 0;
+            const debt = total - paid;
+            
+            debtField.value = debt.toFixed(2);
+            
+            // Visual feedback
+            if (debt > 0) {
+                debtField.classList.remove('text-white');
+                debtField.classList.add('text-danger');
+            } else {
+                debtField.classList.remove('text-danger');
+                debtField.classList.add('text-white');
+            }
+        }
+        
+        totalAmountInput.addEventListener('input', calculateDebt);
+        paidAmountInput.addEventListener('input', calculateDebt);
+        
+        // Initial calculation
+        calculateDebt();
+    });
+</script>
+{% endblock %}

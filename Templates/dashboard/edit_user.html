@@ -1,0 +1,335 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Foydalanuvchini Tahrirlash - {{ user_account.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid animate-fade-in">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="text-white mb-0">
+                    <i class="fas fa-user-edit me-2"></i> Foydalanuvchini Tahrirlash
+                </h2>
+                <a href="{% url 'settings' %}#account-section" class="btn btn-outline-light">
+                    <i class="fas fa-arrow-left me-1"></i> Orqaga
+                </a>
+            </div>
+            <nav aria-label="breadcrumb" class="mt-2">
+                <ol class="breadcrumb bg-transparent p-0">
+                    <li class="breadcrumb-item"><a href="#" class="text-white">Bosh sahifa</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'settings' %}#account-section" class="text-white">Foydalanuvchilar</a></li>
+                    <li class="breadcrumb-item active text-white-50" aria-current="page">{{ user_account.get_full_name }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="glass-card p-4 mb-4">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <div class="row align-items-center mb-4">
+                        <div class="col-auto">
+                            <div class="avatar-upload">
+                                <div class="avatar-preview rounded-circle" style="width: 120px; height: 120px; background-image: url('{% if user_account.profile_image %}{{ user_account.profile_image.url }}{% else %}{% static "default_profile_image.png" %}{% endif %}');"></div>
+                                </div>
+                                {% if request.user.is_admin and request.user != user_account %}
+                                <div class="mt-3">
+                                    <input type="file" id="profile_image" name="profile_image" accept="image/*" class="d-none">
+                                    <label for="profile_image" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-camera me-1"></i> Rasmni o'zgartirish
+                                    </label>
+                                    {% if user_account.profile_image_exists %}
+                                    <button type="button" class="btn btn-sm btn-outline-danger" id="remove-profile-image" data-user-id="{{ user_account.id }}">
+                                        <i class="fas fa-trash me-1"></i> O'chirish
+                                    </button>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col">
+                            <h4 class="mb-1">{{ user_account.get_full_name }}</h4>
+                            <p class="text-muted mb-1">{{ user_account.phone }}</p>
+                            <p class="mb-0">
+                                {% if user_account.is_active and not user_account.is_banned %}
+                                    <span class="badge bg-success">Faol</span>
+                                {% elif user_account.is_banned %}
+                                    <span class="badge bg-danger">Bloklangan</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Nofaol</span>
+                                {% endif %}
+                                
+                                {% if user_account.is_admin %}
+                                    <span class="badge bg-primary ms-1">Administrator</span>
+                                {% elif user_account.is_staff %}
+                                    <span class="badge bg-info ms-1">Xodim</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="firstName" class="form-label">Ism</label>
+                            <input type="text" class="form-control" id="firstName" name="first_name" 
+                                   value="{{ user_account.first_name }}" {% if not request.user.is_admin %}readonly{% endif %}>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="lastName" class="form-label">Familiya</label>
+                            <input type="text" class="form-control" id="lastName" name="last_name" 
+                                   value="{{ user_account.last_name }}" {% if not request.user.is_admin %}readonly{% endif %}>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Elektron pochta</label>
+                        <input type="email" class="form-control" id="email" name="email" 
+                               value="{{ user_account.email|default:'' }}" {% if not request.user.is_admin %}readonly{% endif %}>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">Telefon raqam</label>
+                        <input type="tel" class="form-control" id="phone" value="{{ user_account.phone }}" readonly>
+                        <div class="form-text">Telefon raqamni o'zgartirish uchun administratorga murojaat qiling</div>
+                    </div>
+                    
+                    {% if request.user.is_admin and request.user != user_account %}
+                    <div class="mb-3">
+                        <label for="role" class="form-label">Rol</label>
+                        <select class="form-select" id="role" name="role">
+                            <option value="user" {% if not user_account.is_admin and not user_account.is_staff %}selected{% endif %}>Oddiy foydalanuvchi</option>
+                            <option value="staff" {% if user_account.is_staff and not user_account.is_admin %}selected{% endif %}>Xodim</option>
+                            <option value="admin" {% if user_account.is_admin %}selected{% endif %}>Administrator</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="isActive" name="is_active" 
+                                   {% if user_account.is_active %}checked{% endif %}>
+                            <label class="form-check-label" for="isActive">Faol foydalanuvchi</label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="isBanned" name="is_banned" 
+                                   {% if user_account.is_banned %}checked{% endif %}>
+                            <label class="form-check-label" for="isBanned">Bloklangan</label>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-flex justify-content-between mt-4">
+                        {% if request.user.is_admin and request.user != user_account %}
+                        <div>
+                            <button type="button" class="btn btn-outline-danger me-2" id="delete-user" data-user-id="{{ user_account.id }}">
+                                <i class="fas fa-trash me-1"></i> O'chirish
+                            </button>
+                            <button type="button" class="btn btn-outline-warning" id="reset-password" data-user-id="{{ user_account.id }}">
+                                <i class="fas fa-key me-1"></i> Parolni tiklash
+                            </button>
+                        </div>
+                        {% endif %}
+                        
+                        <div>
+                            <a href="{% url 'settings' %}#account-section" class="btn btn-secondary me-2">
+                                <i class="fas fa-times me-1"></i> Bekor qilish
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i> Saqlash
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Activity Log Card -->
+            {% if request.user.is_admin %}
+            <div class="glass-card p-4">
+                <h4 class="mb-4"><i class="fas fa-history me-2"></i> Faollik tarixi</h4>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Harakat</th>
+                                <th>Vaqt</th>
+                                <th>IP manzil</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in activity_logs %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>{{ log.action }}</td>
+                                <td>{{ log.timestamp|date:"Y-m-d H:i" }}</td>
+                                <td>{{ log.ip_address|default:"-" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">Faollik tarixi topilmadi</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Delete User Modal -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2 text-danger"></i> Foydalanuvchini o'chirish</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Haqiqatan ham <strong>{{ user_account.get_full_name }}</strong> foydalanuvchisini o'chirib tashlamoqchimisiz?</p>
+                <p class="text-danger">Bu harakatni qaytarib bo'lmaydi va foydalanuvchining barcha ma'lumotlari yo'q bo'ladi!</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Bekor qilish</button>
+                <button type="button" class="btn btn-danger" id="confirm-delete">O'chirish</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-key me-2 text-primary"></i> Parolni tiklash</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>{{ user_account.get_full_name }}</strong> foydalanuvchisi uchun yangi parol yaratmoqchimisiz?</p>
+                <div class="mb-3">
+                    <label for="newTempPassword" class="form-label">Yangi parol</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="newTempPassword" readonly>
+                        <button class="btn btn-outline-secondary" type="button" id="generate-new-password">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <div class="form-text">Foydalanuvchi birinchi marta tizimga kirganda parolni o'zgartirishi kerak</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Bekor qilish</button>
+                <button type="button" class="btn btn-primary" id="confirm-reset">Parolni tiklash</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Preview profile image before upload
+    document.getElementById('profile_image')?.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                document.querySelector('.avatar-preview').style.backgroundImage = `url(${event.target.result})`;
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+    
+    // Remove profile image
+    document.getElementById('remove-profile-image')?.addEventListener('click', function() {
+        const userId = this.dataset.userId;
+        if (confirm('Profil rasmini o\'chirishni tasdiqlaysizmi?')) {
+            fetch(`/accounts/settings/remove-profile-image/${userId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({})
+            }).then(response => response.json())
+              .then(data => {
+                  if (data.success) {
+                      document.querySelector('.avatar-preview').style.backgroundImage = 'url(/media/default_profile_image.png)';
+                      this.remove();
+                  }
+              });
+        }
+    });
+    
+    // Delete user button
+    document.getElementById('delete-user')?.addEventListener('click', function() {
+        const modal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
+        modal.show();
+        
+        document.getElementById('confirm-delete').addEventListener('click', function() {
+            const userId = document.getElementById('delete-user').dataset.userId;
+            fetch(`/accounts/settings/delete-user/${userId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({})
+            }).then(response => response.json())
+              .then(data => {
+                  if (data.success) {
+                      window.location.href = "{% url 'settings' %}#account-section";
+                  }
+              });
+        });
+    });
+    
+    // Reset password button
+    document.getElementById('reset-password')?.addEventListener('click', function() {
+        const modal = new bootstrap.Modal(document.getElementById('resetPasswordModal'));
+        modal.show();
+        
+        // Generate random password
+        function generatePassword() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+            let password = '';
+            for (let i = 0; i < 12; i++) {
+                password += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            document.getElementById('newTempPassword').value = password;
+        }
+        
+        generatePassword();
+        
+        document.getElementById('generate-new-password').addEventListener('click', generatePassword);
+        
+        document.getElementById('confirm-reset').addEventListener('click', function() {
+            const userId = document.getElementById('reset-password').dataset.userId;
+            const newPassword = document.getElementById('newTempPassword').value;
+            
+            fetch(`/accounts/settings/reset-password/${userId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    new_password: newPassword
+                })
+            }).then(response => response.json())
+              .then(data => {
+                  if (data.success) {
+                      modal.hide();
+                      alert('Parol muvaffaqiyatli tiklandi! Yangi parol: ' + newPassword);
+                  }
+              });
+        });
+    });
+</script>
+{% endblock %}

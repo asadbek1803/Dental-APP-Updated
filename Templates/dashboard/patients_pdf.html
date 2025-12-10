@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bemorlar ro'yxati</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1.5cm;
+            @top-center {
+                content: "{{ hospital_name }}";
+                font-size: 16px;
+                font-weight: bold;
+            }
+            @bottom-center {
+                content: "Sahifa " counter(page) " / " counter(pages);
+                font-size: 12px;
+            }
+        }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        h1 {
+            text-align: center;
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        .header-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 6px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .footer {
+            margin-top: 20px;
+            text-align: right;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Bemorlar ro'yxati</h1>
+    
+    <div class="header-info">
+        <div>Joriy sana: {{ current_date }}</div>
+        <div>Jami bemorlar: {{ patients.count }}</div>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>№</th>
+                <th>F.I.Sh.</th>
+                <th>Tug'ilgan sana</th>
+                <th>Telefon</th>
+                <th>Manzil</th>
+                <th>Kelgan sana</th>
+                <th>Tashxis</th>
+                <th>Shifokor</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for patient in patients %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ patient.full_name }}</td>
+                <td>{{ patient.birth_date|date:"d.m.Y" }}</td>
+                <td>{{ patient.phone }}</td>
+                <td>{{ patient.address }}</td>
+                <td>{{ patient.last_coming|date:"d.m.Y" }}</td>
+                <td>{{ patient.diagnosis|default:"-" }}</td>
+                <td></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <div class="footer">
+        <p>Chiqarilgan sana: {{ current_date }}</p>
+    </div>
+</body>
+</html>

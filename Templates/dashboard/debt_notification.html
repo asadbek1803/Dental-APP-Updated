@@ -1,0 +1,476 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Qarzdorlarga SMS Yuborish{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card mb-4">
+                <div class="card-header pb-0">
+                    <h6>Qarzdorlarga SMS Yuborish</h6>
+                </div>
+                <!-- <script>alert("Hello World");</script> -->
+                <div class="card-body">
+                    <div id="alert-container"></div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">SMS Sozlamalari</h5>
+                                    <form id="sms-form">
+                                        {% csrf_token %}
+                                        <div class="form-group mb-3">
+                                            <label for="debt-threshold">Minimal qarz miqdori (so'm)</label>
+                                            <input type="number" id="debt-threshold" class="form-control" 
+                                                   value="0" min="0" step="1000">
+                                        </div>
+                                        
+                                        <div class="form-group mb-3">
+                                            <label for="message-template">Xabar matni</label>
+                                            <textarea id="message-template" class="form-control" rows="5">Hurmatli [patient], sizda [debt] so'm qarz bor. Iltimos to'lovni amalga oshiring. Telefon: [phone]</textarea>
+                                            <small class="text-muted">
+                                                Foydalanish mumkin: [patient], [debt], [phone]
+                                            </small>
+                                        </div>
+                                        
+                                        <div class="mt-3">
+                                            <button type="button" id="preview-btn" class="btn btn-primary">
+                                                <i class="fas fa-eye me-1"></i> Qarzdorlarni Ko'rish
+                                            </button>
+                                            <button type="button" id="send-btn" class="btn btn-success ms-2" disabled>
+                                                <i class="fas fa-paper-plane me-1"></i> SMS Yuborish
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                            
+                            <div class="card mt-4">
+                                <div class="card-body">
+                                    <h5 class="card-title">SMS Namuna</h5>
+                                    <div id="message-preview" class="p-3 bg-light rounded">
+                                        Hurmatli Ali Valiev, sizda 150,000.00 so'm qarz bor. Iltimos to'lovni amalga oshiring. Telefon: +998901234567
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h5 class="card-title mb-0">Qarzdorlar Ro'yxati</h5>
+                                        <span id="debtors-count" class="badge bg-primary">0 ta</span>
+                                    </div>
+                                    
+                                    <div class="table-responsive mt-3">
+                                        <table class="table align-items-center mb-0" id="debtors-table">
+                                            <thead>
+                                                <tr>
+                                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Bemor</th>
+                                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Telefon</th>
+                                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Qarz</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="debtors-body">
+                                                <tr>
+                                                    <td colspan="3" class="text-center py-4">
+                                                        Qarzdorlarni ko'rish uchun "Qarzdorlarni Ko'rish" tugmasini bosing
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing SMS module...');
+    
+    // URL'larni tekshirish - Django URL'larni JavaScript o'zgaruvchilariga o'tkazish
+    const API_URLS = {
+        getDebtors: "{% url 'get_debtors_api' %}",
+        sendSms: "{% url 'send_debt_sms_api' %}"
+    };
+    
+    console.log('API URLs:', API_URLS);
+    
+    // Elementlarni olish va tekshirish
+    const elements = {
+        previewBtn: document.getElementById('preview-btn'),
+        sendBtn: document.getElementById('send-btn'),
+        thresholdInput: document.getElementById('debt-threshold'),
+        messageTemplate: document.getElementById('message-template'),
+        messagePreview: document.getElementById('message-preview'),
+        debtorsBody: document.getElementById('debtors-body'),
+        debtorsCount: document.getElementById('debtors-count'),
+        alertContainer: document.getElementById('alert-container'),
+        csrfToken: document.querySelector('[name=csrfmiddlewaretoken]')
+    };
+    
+    // Barcha elementlar mavjudligini tekshirish
+    const missingElements = Object.keys(elements).filter(key => !elements[key]);
+    if (missingElements.length > 0) {
+        console.error('Missing elements:', missingElements);
+        showAlert('Sahifada xatolik: ' + missingElements.join(', ') + ' elementlari topilmadi', 'danger');
+        return;
+    }
+    
+    const csrfToken = elements.csrfToken.value;
+    console.log('All elements found, CSRF token:', csrfToken ? 'present' : 'missing');
+    
+    // Event listener'larni qo'shish
+    elements.messageTemplate.addEventListener('input', updateMessagePreview);
+    elements.previewBtn.addEventListener('click', previewDebtors);
+    elements.sendBtn.addEventListener('click', sendDebtSms);
+    
+    // Dastlabki preview yangilash
+    updateMessagePreview();
+    
+    function updateMessagePreview() {
+        try {
+            const template = elements.messageTemplate.value;
+            const preview = template
+                .replace(/\[patient\]/g, 'Ali Valiev')
+                .replace(/\[debt\]/g, '150,000.00')
+                .replace(/\[phone\]/g, '+998901234567');
+            elements.messagePreview.textContent = preview;
+            console.log('Preview updated');
+        } catch (error) {
+            console.error('Error updating preview:', error);
+        }
+    }
+    
+    function previewDebtors() {
+        console.log('Preview button clicked');
+        
+        try {
+            const threshold = elements.thresholdInput.value || 0;
+            console.log('Threshold:', threshold);
+            
+            showLoading(true, elements.previewBtn);
+            clearDebtorsTable();
+            
+            const url = API_URLS.getDebtors + '?threshold=' + encodeURIComponent(threshold);
+            console.log('Fetching from:', url);
+            
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                console.log('Response received:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    ok: response.ok,
+                    headers: [...response.headers.entries()]
+                });
+                
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error('HTTP ' + response.status + ': ' + text);
+                    });
+                }
+                
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                handleDebtorsResponse(data);
+            })
+            .catch(error => {
+                console.error('Fetch Error:', error);
+                showAlert('So\'rov yuborishda xatolik: ' + error.message, 'danger');
+                elements.sendBtn.disabled = true;
+            })
+            .finally(() => {
+                showLoading(false, elements.previewBtn);
+            });
+            
+        } catch (error) {
+            console.error('Error in previewDebtors:', error);
+            showAlert('Xatolik yuz berdi: ' + error.message, 'danger');
+            showLoading(false, elements.previewBtn);
+        }
+    }
+    
+    function handleDebtorsResponse(data) {
+                try {
+                    if (data.success) {
+                        // Yangi strukturaga mos o'zgartirish
+                        const debtors = data.debtors.debtors_list || [];
+                        const count = data.count || debtors.length;
+                        
+                        populateDebtorsTable(debtors);
+                        elements.debtorsCount.textContent = count + ' ta';
+                        elements.sendBtn.disabled = count === 0;
+                        
+                        showAlert(count + ' ta qarzdor topildi', 'success');
+                        console.log('Debtors loaded successfully:', count);
+                    } else {
+                        const errorMsg = data.error || 'Noma\'lum xato';
+                        console.error('API Error:', errorMsg);
+                        showAlert('Xatolik yuz berdi: ' + errorMsg, 'danger');
+                        elements.sendBtn.disabled = true;
+                    }
+                } catch (error) {
+                    console.error('Error handling debtors response:', error);
+                    showAlert('Ma\'lumotlarni qayta ishlashda xatolik', 'danger');
+                }
+    }
+    
+    function sendDebtSms() {
+        console.log('Send SMS button clicked');
+        
+        try {
+            if (!confirm('Barcha qarzdorlarga SMS yuborishni tasdiqlaysizmi?')) {
+                return;
+            }
+            
+            const threshold = elements.thresholdInput.value || 0;
+            const template = elements.messageTemplate.value;
+            
+            if (!template.trim()) {
+                showAlert('Xabar matni bo\'sh bo\'lishi mumkin emas', 'danger');
+                return;
+            }
+            
+            console.log('Sending SMS:', { threshold, template });
+            
+            showLoading(true, elements.sendBtn);
+            elements.sendBtn.disabled = true;
+            
+            const formData = new FormData();
+            formData.append('debt_threshold', threshold);
+            formData.append('message_template', template);
+            
+            fetch(API_URLS.sendSms, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                console.log('SMS Response:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    ok: response.ok
+                });
+                
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error('HTTP ' + response.status + ': ' + text);
+                    });
+                }
+                
+                return response.json();
+            })
+            .then(data => {
+                console.log('SMS Response data:', data);
+                handleSmsResponse(data);
+            })
+            .catch(error => {
+                console.error('SMS Fetch Error:', error);
+                showAlert('Xatolik yuz berdi: ' + error.message, 'danger');
+            })
+            .finally(() => {
+                showLoading(false, elements.sendBtn);
+                elements.sendBtn.disabled = false;
+            });
+            
+        } catch (error) {
+            console.error('Error in sendDebtSms:', error);
+            showAlert('SMS yuborishda xatolik: ' + error.message, 'danger');
+            showLoading(false, elements.sendBtn);
+            elements.sendBtn.disabled = false;
+        }
+    }
+    
+    function handleSmsResponse(data) {
+    try {
+        console.log('Full SMS response:', data);  // Javobni to'liq log qilish
+        
+        if (data.success) {
+            const sentCount = data.sent_count || 0;
+            const totalDebtors = data.total_debtors || 0;
+            let message = sentCount + ' ta SMS muvaffaqiyatli yuborildi';
+            
+            if (totalDebtors > 0) {
+                message += ' (' + totalDebtors + ' ta qarzdordan)';
+            }
+            
+            // Qo'shimcha xatolik ma'lumotlari
+            if (data.failed_count > 0) {
+                message += '\n' + data.failed_count + ' ta SMS yuborilmadi';
+                if (data.failed_list && data.failed_list.length > 0) {
+                    message += ': ' + data.failed_list.map(e => e.name).join(', ');
+                }
+            }
+            
+            showAlert(message, 'success');
+            console.log('SMS sent successfully:', { sentCount, totalDebtors });
+        } else {
+            const errorMsg = data.error || 'Noma\'lum xato';
+            console.error('SMS API Error:', errorMsg);
+            showAlert('SMS yuborishda xatolik: ' + errorMsg, 'danger');
+        }
+    } catch (error) {
+        console.error('Error handling SMS response:', error);
+        showAlert('SMS javobini qayta ishlashda xatolik: ' + error.message, 'danger');
+    }
+}
+
+    function populateDebtorsTable(debtors) {
+        console.log('Populating table with debtors:', debtors);
+        
+        try {
+            let html = '';
+            
+            if (!debtors || debtors.length === 0) {
+                html = `
+                    <tr>
+                        <td colspan="3" class="text-center py-4">
+                            Ushbu miqdordagi qarzdorlar topilmadi
+                        </td>
+                    </tr>
+                `;
+            } else {
+                debtors.forEach(debtor => {
+                    const fullName = escapeHtml(debtor.full_name || 'N/A');
+                    const phoneNumber = escapeHtml(debtor.phone_number || 'N/A');
+                    const totalDebt = debtor.total_debt || '0.00';
+                    
+                    html += `
+                        <tr>
+                            <td>
+                                <div class="d-flex px-2 py-1">
+                                    <div class="d-flex flex-column justify-content-center">
+                                        <h6 class="mb-0 text-sm">${fullName}</h6>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <p class="text-sm mb-0">${phoneNumber}</p>
+                            </td>
+                            <td class="text-danger text-sm font-weight-bold">
+                                ${totalDebt} so'm
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+            
+            elements.debtorsBody.innerHTML = html;
+            console.log('Table populated with', debtors.length, 'rows');
+            
+        } catch (error) {
+            console.error('Error populating table:', error);
+            elements.debtorsBody.innerHTML = `
+                <tr>
+                    <td colspan="3" class="text-center py-4 text-danger">
+                        Jadvalni yangilashda xatolik
+                    </td>
+                </tr>
+            `;
+        }
+    }
+    
+    function clearDebtorsTable() {
+        elements.debtorsBody.innerHTML = `
+            <tr>
+                <td colspan="3" class="text-center py-4">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                        <span class="visually-hidden">Yuklanmoqda...</span>
+                    </div>
+                    <span class="ms-2">Yuklanmoqda...</span>
+                </td>
+            </tr>
+        `;
+    }
+    
+    function showLoading(show, element) {
+        try {
+            if (show) {
+                const originalText = element.innerHTML;
+                element.setAttribute('data-original-text', originalText);
+                element.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Yuklanmoqda...';
+                element.disabled = true;
+            } else {
+                const originalText = element.getAttribute('data-original-text');
+                if (originalText) {
+                    element.innerHTML = originalText;
+                    element.removeAttribute('data-original-text');
+                }
+                element.disabled = false;
+            }
+        } catch (error) {
+            console.error('Error in showLoading:', error);
+        }
+    }
+    
+    function showAlert(message, type) {
+        type = type || 'info';
+        console.log('Showing alert:', type, '-', message);
+        
+        try {
+            // Oldingi alertlarni tozalash
+            elements.alertContainer.innerHTML = '';
+            
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-' + type + ' alert-dismissible fade show';
+            alert.role = 'alert';
+            alert.innerHTML = 
+                escapeHtml(message) +
+                '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>';
+            
+            elements.alertContainer.appendChild(alert);
+            
+            // 5 soniyadan keyin avtomatik yopish
+            setTimeout(function() {
+                if (alert.parentNode) {
+                    alert.classList.remove('show');
+                    setTimeout(function() {
+                        if (alert.parentNode) {
+                            alert.remove();
+                        }
+                    }, 150);
+                }
+            }, 5000);
+            
+        } catch (error) {
+            console.error('Error showing alert:', error);
+        }
+    }
+    
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    console.log('SMS module initialized successfully');
+});
+</script>
+{% endblock %}

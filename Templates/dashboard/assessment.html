@@ -1,0 +1,534 @@
+{% extends 'base.html' %}
+
+{% block title %}Tibbiy Baholash - AI Tibbiy Ma'lumotlar Tizimi{% endblock %}
+
+{% block content %}
+<style>
+    #helpModal .form-select {
+    background-color: #fff;
+    color: #212529;
+}
+
+#helpModal .form-select option {
+    background-color: #fff;
+    color: #212529;
+    padding: 8px 12px;
+}
+
+/* Dropdown ochilganda ko'rinishi */
+#helpModal .form-select:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+</style>
+<div class="animate-fade-in">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="text-white mb-2">
+                <i class="fas fa-stethoscope me-3"></i>
+                Tibbiy Baholash
+            </h1>
+            <p class="text-white-50 mb-0">Bemorlarning tibbiy holatini baholash va davolash rejasini tuzish</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAssessmentModal">
+            <i class="fas fa-plus me-2"></i>
+            Yangi Baholash
+        </button>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-user-md"></i>
+                </div>
+                <div class="stat-number">{{ total_assessments }}</div>
+                <div class="stat-label">Jami Baholashlar</div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, #10b981, #059669);">
+                <div class="stat-icon">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <div class="stat-number">{{ today_assessments }}</div>
+                <div class="stat-label">Bugungi Baholashlar</div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                <div class="stat-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="stat-number">{{ emergency_cases }}</div>
+                <div class="stat-label">Shoshilinch Holatlar</div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                <div class="stat-icon">
+                    <i class="fas fa-x-ray"></i>
+                </div>
+                <div class="stat-number">{{ xray_cases }}</div>
+                <div class="stat-label">Rentgen Tekshiruvlar</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="glass-card p-4 mb-4">
+        <form method="GET">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label text-dark fw-semibold">Bemor qidirish</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0">
+                            <i class="fas fa-search text-muted"></i>
+                        </span>
+                        <input type="text" name="patient_name" class="form-control border-start-0" 
+                               placeholder="Bemor ismi bo'yicha qidirish..." value="{{ request.GET.patient_name }}">
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label text-dark fw-semibold">Bemor holati</label>
+                    <select class="form-select" name="condition">
+                        <option value="">Barcha holatlar</option>
+                        {% for value, label in MedicalAssessment.CONDITION %}
+                            <option value="{{ value }}" {% if request.GET.condition == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label text-dark fw-semibold">Baholash sanasi</label>
+                    <input type="date" name="assessment_date" class="form-control" value="{{ request.GET.assessment_date }}">
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label class="form-label text-dark fw-semibold">&nbsp;</label>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-filter me-2"></i>
+                        Filtr
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Medical Assessments List -->
+    <div class="glass-card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="fas fa-list-alt me-2"></i>
+                Tibbiy Baholashlar Ro'yxati
+            </h5>
+            <span class="badge bg-light text-dark">{{ assessments.count }} ta natija</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-user me-2"></i>Bemor</th>
+                            <th><i class="fas fa-calendar me-2"></i>Sana</th>
+                            <th><i class="fas fa-heartbeat me-2"></i>Holat</th>
+                            <th><i class="fas fa-notes-medical me-2"></i>Tashxis</th>
+                            <th><i class="fas fa-money-bill me-2"></i>MHSHB</th>
+                            <th><i class="fas fa-x-ray me-2"></i>Rentgen</th>
+                            <th><i class="fas fa-cogs me-2"></i>Amallar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for assessment in assessments %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3">
+                                        {{ assessment.patient.full_name|slice:":2" }}
+                                    </div>
+                                    <div>
+                                        <strong>{{ assessment.patient.full_name }}</strong>
+                                        <br>
+                                        <small class="text-muted">ID: {{ assessment.patient.id }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="fw-semibold">{{ assessment.assessment_date|date:"d.m.Y" }}</span>
+                                <br>
+                                <small class="text-muted">{{ assessment.created|time }}</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-danger-subtle text-danger px-3 py-2">
+                                    <i class="fas fa-tooth me-1"></i>
+                                    {{ assessment.get_patient_condition_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="text-truncate d-inline-block" style="max-width: 200px;" title="{{ assessment.diagnosis|default:'Tashxis kiritilmagan' }}">
+                                    {{ assessment.diagnosis|truncatechars:30|default:'Tashxis kiritilmagan' }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="fw-bold text-success">{{ assessment.total_mhshb }} so'm</span>
+                            </td>
+                            <td>
+                                <span class="badge {% if assessment.rengen_image %}bg-success-subtle text-success{% else %}bg-secondary-subtle text-secondary{% endif %}">
+                                    <i class="fas {% if assessment.rengen_image %}fa-check{% else %}fa-times{% endif %} me-1"></i>
+                                    {% if assessment.rengen_image %}Mavjud{% else %}Yo'q{% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <a href="{% url 'assessment_detail' assessment.id %}" class="btn btn-sm btn-outline-primary action-btn me-1" title="Ko'rish">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'assessment_edit' assessment.id %}" class="btn btn-sm btn-outline-success action-btn me-1" title="Tahrirlash">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <form method="post" action="{% url 'assessment_delete' assessment.id %}" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger action-btn" title="O'chirish" onclick="return confirm('Haqiqatan ham bu baholashni o\'chirmoqchimisiz?')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4">Hech qanday baholash topilmadi</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <div class="card-footer bg-transparent">
+            <nav aria-label="Sahifalar navigatsiyasi">
+                <ul class="pagination justify-content-center mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Oldingi</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">Oldingi</span>
+                    </li>
+                    {% endif %}
+                    
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                        {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">Keyingi</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">Keyingi</span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Assessment Modal -->
+<div class="modal fade" id="addAssessmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content glass-card border-0">
+            <div class="modal-header bg-primary text-white position-relative">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus-circle me-2"></i>
+                    Yangi Tibbiy Baholash Qo'shish
+                </h5>
+                
+                <!-- Yordam tugmasi -->
+                <button type="button" class="btn btn-sm btn-light position-absolute end-0 me-5" 
+                        data-bs-toggle="modal" data-bs-target="#helpModal" title="Yordam">
+                    <i class="fas fa-question"></i>
+                </button>
+                
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="row">
+                        <!-- Patient Selection -->
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">
+                                <i class="fas fa-user me-2 text-primary"></i>
+                                Bemor
+                            </label>
+                            {{ form.patient }}
+                        </div>
+                        
+                        <!-- Assessment Date -->
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">
+                                <i class="fas fa-calendar me-2 text-primary"></i>
+                                Baholash sanasi
+                            </label>
+                            {{ form.assessment_date }}
+                        </div>
+                        
+                        <!-- Patient Condition -->
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">
+                                <i class="fas fa-heartbeat me-2 text-primary"></i>
+                                Bemor holati
+                            </label>
+                            {{ form.patient_condition }}
+                        </div>
+                        
+                        <!-- Total MHSHB -->
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">
+                                <i class="fas fa-money-bill me-2 text-primary"></i>
+                                Jami MHSHB (so'm)
+                            </label>
+                            {{ form.total_mhshb }}
+                        </div>
+                        
+                        <!-- Diagnosis -->
+                        <div class="col-12 mb-3">
+                            <label class="form-label fw-semibold">
+                                <i class="fas fa-diagnoses me-2 text-primary"></i>
+                                Tashxis
+                            </label>
+                            {{ form.diagnosis }}
+                        </div>
+                        
+                        <!-- Medical Assessment -->
+                        <div class="col-12 mb-3">
+                            <label class="form-label fw-semibold">
+                                <i class="fas fa-notes-medical me-2 text-primary"></i>
+                                Tibbiy baholash
+                            </label>
+                            {{ form.assessment }}
+                        </div>
+                        
+                        <!-- Treatment Plan -->
+                        <div class="col-12 mb-3">
+                            <label class="form-label fw-semibold">
+                                <i class="fas fa-tasks me-2 text-primary"></i>
+                                Davolash rejasi
+                            </label>
+                            {{ form.treatment_plan }}
+                        </div>
+                        
+                        <!-- MHSHB Checkup -->
+                        <div class="col-12 mb-3">
+                            <label class="form-label fw-semibold">
+                                <i class="fas fa-clipboard-check me-2 text-primary"></i>
+                                MHSHB prof ko'rik
+                            </label>
+                            {{ form.mhshb_checkup }}
+                        </div>
+                        
+                        <!-- X-ray Image -->
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">
+                                <i class="fas fa-x-ray me-2 text-primary"></i>
+                                Rentgen rasmi
+                            </label>
+                            {{ form.rengen_image }}
+                            <small class="text-muted">JPG, PNG formatida rasm yuklang</small>
+                        </div>
+                        
+                        <!-- Additional Notes -->
+                        <div class="col-12 mb-3">
+                            <label class="form-label fw-semibold">
+                                <i class="fas fa-sticky-note me-2 text-primary"></i>
+                                Qo'shimcha eslatmalar
+                            </label>
+                            {{ form.additional_notes }}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>
+                        Bekor qilish
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>
+                        Saqlash
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Yordam Modal -->
+<div class="modal fade" id="helpModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-question-circle me-2"></i>
+                    Forma Elementlari Tushuntirishi
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="accordion" id="helpAccordion">
+                    <!-- Bemor -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#helpPatient">
+                                <i class="fas fa-user me-2 text-primary"></i> Bemor tanlash
+                            </button>
+                        </h2>
+                        <div id="helpPatient" style="background-color: #fff;
+    color: #212529;
+    padding: 8px 12px;" class="accordion-collapse collapse show" data-bs-parent="#helpAccordion">
+                            <div class="accordion-body">
+                                <p>Bu yerda tizimda ro'yxatdan o'tgan bemorlardan birini tanlaysiz. Agar bemor topilmasa, avval bemor profilini yaratishingiz kerak.</p>
+                                <p><strong>Qidirish uchun:</strong> Ism, familiya yoki pasport raqamini yozib, ro'yxatdan izlang</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Baholash sanasi -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#helpDate">
+                                <i class="fas fa-calendar me-2 text-primary"></i> Baholash sanasi
+                            </button>
+                        </h2>
+                        <div id="helpDate" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+                            <div class="accordion-body">
+                                <p>Tibbiy baholash qilingan sana. Avtomatik ravishda bugungi sana ko'rsatiladi, lekin o'zgartirishingiz mumkin.</p>
+                                <p><strong>Diqqat:</strong> Sana kelgusi sana bo'lishi mumkin emas!</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Bemor holati -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#helpCondition">
+                                <i class="fas fa-heartbeat me-2 text-primary"></i> Bemor holati
+                            </button>
+                        </h2>
+                        <div id="helpCondition" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+                            <div class="accordion-body">
+                                <p>Bemorning joriy sog'lig'i holatini tavsiflang. Misol uchun:</p>
+                                <ul>
+                                    <li><span class="badge bg-success">Yaxshi</span> - Hech qanday shikoyatlar yo'q</li>
+                                    <li><span class="badge bg-warning text-dark">O'rtacha</span> - Bir oz shikoyatlar bor</li>
+                                    <li><span class="badge bg-danger">Og'ir</span> - Shoshilinch yordam kerak</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Qo'shimcha yordam elementlari -->
+                    <!-- Har bir forma elementi uchun shunday accordion qismi qo'shishingiz mumkin -->
+                    
+                    <!-- Umumiy yordam -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#helpGeneral">
+                                <i class="fas fa-info-circle me-2 text-primary"></i> Umumiy ko'rsatmalar
+                            </button>
+                        </h2>
+                        <div id="helpGeneral" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+                            <div class="accordion-body">
+                                <h6><i class="fas fa-exclamation-triangle text-warning"></i> Diqqat!</h6>
+                                <ul>
+                                    <li>Barcha maydonlarni to'ldirish shart emas, faqat kerakli maydonlarni to'ldiring</li>
+                                    <li>Rasmlar faqat JPG yoki PNG formatida bo'lishi kerak</li>
+                                    <li>Ma'lumotlarni saqlagach, ularni tahrirlash imkoniyati cheklangan bo'lishi mumkin</li>
+                                </ul>
+                                <p>Agar qo'shimcha yordam kerak bo'lsa, IT bo'limiga murojaat qiling: <a href="tel:+998901234567">+998 90 123 45 67</a></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i> Yopish
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+
+    // Add hover effects for table rows
+    document.querySelectorAll('.table tbody tr').forEach(row => {
+        row.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateX(4px)';
+        });
+        
+        row.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateX(0)';
+        });
+    });
+
+    // Auto-resize textareas
+    document.querySelectorAll('textarea').forEach(textarea => {
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = this.scrollHeight + 'px';
+        });
+    });
+
+    // Form validation
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            const requiredFields = this.querySelectorAll('[required]');
+            let isValid = true;
+            
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    field.classList.add('is-invalid');
+                    isValid = false;
+                } else {
+                    field.classList.remove('is-invalid');
+                }
+            });
+            
+            if (!isValid) {
+                e.preventDefault();
+            }
+        });
+    });
+</script>
+<!-- CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+<!-- JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<!-- Agar lokal til kerak bo'lsa -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/uz.js"></script>
+{% endblock %}

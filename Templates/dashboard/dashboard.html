@@ -1,0 +1,430 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+
+<style>
+    body {
+        background: linear-gradient(135deg, #1e3c72, #2a5298, #3b82f6);
+        min-height: 100vh;
+        color: white;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    .glass-card {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 15px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    }
+    
+    .stat-card {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 15px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.5);
+    }
+    
+    .recent-patients-card {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 15px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    }
+    
+    .table-dark {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    
+    .table-dark td, .table-dark th {
+        border-color: rgba(255, 255, 255, 0.1);
+        padding: 12px 8px;
+        color: white;
+    }
+    
+    .form-control-custom {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 8px;
+        color: white;
+        backdrop-filter: blur(10px);
+    }
+    
+    .form-control-custom::placeholder {
+        color: rgba(255, 255, 255, 0.7);
+    }
+    
+    .form-control-custom:focus {
+        background: rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.3);
+        box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.1);
+        color: white;
+    }
+    
+    .btn-custom {
+        border-radius: 8px;
+        padding: 10px 20px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary-custom {
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        border: none;
+        color: white;
+    }
+    
+    .btn-primary-custom:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    }
+    
+    .btn-secondary-custom {
+        background: linear-gradient(45deg, #f093fb, #f5576c);
+        border: none;
+        color: white;
+    }
+    
+    .btn-danger-custom {
+        background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+        border: none;
+        color: white;
+    }
+    
+    .btn-icon {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin: 2px;
+        font-size: 12px;
+    }
+    
+    .actions-column {
+        min-width: 140px;
+    }
+    
+    .animate-fade-in {
+        animation: fadeIn 0.5s ease-in;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .page-content {
+        display: none;
+    }
+    
+    .page-content.active {
+        display: block;
+    }
+    
+    .filter-section {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+</style>
+
+<!-- Main Content -->
+<div class="container-fluid p-4">
+    <!-- Dashboard Page -->
+    <div id="dashboard" class="page-content active animate-fade-in">
+        <div class="row mb-4">
+            <div class="col-12">
+                <h1 class="text-white fw-bold mb-1">Dashboard</h1>
+                <p class="text-white-50">Bugungi holat: <span id="current-date"></span></p>
+            </div>
+        </div>
+        
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3 mb-3">
+                <div class="stat-card p-4 text-center h-100">
+                    <i class="fas fa-calendar-day fa-2x mb-3"></i>
+                    <h3 class="mb-2">{{today_patients}}</h3>
+                    <p class="mb-0">Bugungi Qabullar</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="stat-card p-4 text-center h-100">
+                    <i class="fas fa-users fa-2x mb-3"></i>
+                    <h3 class="mb-2">{{all_patients}}</h3>
+                    <p class="mb-0">Umumiy Bemorlar</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="stat-card p-4 text-center h-100">
+                    <i class="fas fa-tooth fa-2x mb-3"></i>
+                    <h3 class="mb-2">{{all_caries_medical_assessments}}</h3>
+                    <p class="mb-0">Karies Holatlari</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="stat-card p-4 text-center h-100">
+                    <i class="fas fa-money-bill-wave fa-2x mb-3"></i>
+                    <h3 class="mb-2">{{payments_today_sum|floatformat:0}}</h3>
+                    <p class="mb-0">Bugungi Daromad (so'm)</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Patients List Section -->
+        <div class="row">
+            <div class="col-12">
+                <div class="glass-card p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2 class="text-white mb-0">Bemorlar Ro'yxati</h2>
+                        <button class="btn btn-primary-custom btn-custom" onclick="addPatient()">
+                            <i class="fas fa-plus me-2"></i>Yangi Bemor
+                        </button>
+                    </div>
+                    
+                    <!-- Search and Filter -->
+                    <div class="filter-section">
+                        <form method="GET" id="filterForm">
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <input type="text" 
+                                           class="form-control form-control-custom" 
+                                           placeholder="Bemor ismini yoki telefon raqamini qidiring..." 
+                                           name="search"
+                                           value="{{search_query}}"
+                                           id="patient-search">
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <select class="form-control form-control-custom" name="age_filter" id="age-filter">
+                                        <option value="">Yosh guruhi</option>
+                                        <option value="child" {% if age_filter == 'child' %}selected{% endif %}>Farzand (0-12)</option>
+                                        <option value="youth" {% if age_filter == 'youth' %}selected{% endif %}>Yoshlik (13-25)</option>
+                                        <option value="adult" {% if age_filter == 'adult' %}selected{% endif %}>Kattalar (26-60)</option>
+                                        <option value="elderly" {% if age_filter == 'elderly' %}selected{% endif %}>Qarilik (60+)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <select class="form-control form-control-custom" name="gender_filter" id="gender-filter">
+                                        <option value="">Jinsi</option>
+                                        <option value="male" {% if gender_filter == 'male' %}selected{% endif %}>Erkak</option>
+                                        <option value="female" {% if gender_filter == 'female' %}selected{% endif %}>Ayol</option>
+                                        <option value="other" {% if gender_filter == 'other' %}selected{% endif %}>Boshqa</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2 mb-3">
+                                    <button type="submit" class="btn btn-primary-custom btn-custom w-100">
+                                        <i class="fas fa-search me-2"></i>Qidirish
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            {% if search_query or age_filter or gender_filter %}
+                            <div class="row">
+                                <div class="col-12">
+                                    <a href="{% url 'home' %}" class="btn btn-secondary btn-sm">
+                                        <i class="fas fa-times me-1"></i>Filtrlarni tozalash
+                                    </a>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </form>
+                    </div>
+                    
+                    <!-- Patients Table -->
+                    <div class="table-responsive">
+                        <table class="table table-dark table-striped">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Ism Familiya</th>
+                                    <th>Yosh</th>
+                                    <th>Jinsi</th>
+                                    <th>Telefon</th>
+                                    <th>So'nggi Kelish</th>
+                                    <th>Holat</th>
+                                    <th class="actions-column">Amallar</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for patient in last_five_patients %}
+                                <tr>
+                                    <td>{{ patient.id }}</td>
+                                    <td>{{ patient.full_name }}</td>
+                                    <td>{{ patient.age }}</td>
+                                    <td>
+                                        {% if patient.gender == 'M' %}
+                                            <i class="fas fa-mars text-primary"></i> Erkak
+                                        {% elif patient.gender == 'F' %}
+                                            <i class="fas fa-venus text-pink"></i> Ayol
+                                        {% else %}
+                                            <i class="fas fa-genderless"></i> Boshqa
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ patient.phone_number }}</td>
+                                    <td>{{ patient.last_coming|date:"d.m.Y" }}</td>
+                                    <td>
+                                        <span class="badge bg-success">{{ patient.status }}</span>
+                                    </td>
+                                    <td class="actions-column">
+                                        <div class="btn-group">
+                                            <button class="btn btn-icon btn-primary-custom" 
+                                                    onclick="viewPatient({{ patient.id }})"
+                                                    title="Ko'rish">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="btn btn-icon btn-secondary-custom" 
+                                                    onclick="editPatient({{ patient.id }})"
+                                                    title="Tahrirlash">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-icon btn-danger-custom" 
+                                                    onclick="deletePatient({{ patient.id }})"
+                                                    title="O'chirish">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="8" class="text-center py-4">
+                                        <i class="fas fa-search fa-2x mb-3 text-white-50"></i>
+                                        <p class="text-white-50 mb-0">
+                                            {% if search_query or age_filter or gender_filter %}
+                                                Qidiruv bo'yicha bemorlar topilmadi
+                                            {% else %}
+                                                Hozircha bemorlar ro'yxati bo'sh
+                                            {% endif %}
+                                        </p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Show More Button -->
+                    {% if last_five_patients|length >= 10 %}
+                    <div class="text-center mt-4">
+                        <button class="btn btn-light btn-lg glass-card mx-auto d-block" 
+                                style="transition: all 0.3s ease; color: white;"
+                                onclick="showAllPatients()"
+                                onmouseover="this.style.transform='scale(1.05)'; this.style.background='rgba(255, 255, 255, 0.2)'"
+                                onmouseout="this.style.transform='scale(1)'; this.style.background='rgba(255, 255, 255, 0.1)'">
+                            <i class="fas fa-users me-2"></i>
+                            Barcha bemorlarni ko'rish
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Current date display
+document.addEventListener('DOMContentLoaded', function() {
+    const currentDate = new Date().toLocaleDateString('uz-UZ', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+    document.getElementById('current-date').textContent = currentDate;
+});
+
+// Real-time search functionality
+document.getElementById('patient-search').addEventListener('input', function() {
+    const searchTerm = this.value.toLowerCase();
+    const tableRows = document.querySelectorAll('tbody tr');
+    
+    tableRows.forEach(row => {
+        const name = row.cells[1]?.textContent.toLowerCase() || '';
+        const phone = row.cells[4]?.textContent.toLowerCase() || '';
+        
+        if (name.includes(searchTerm) || phone.includes(searchTerm)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+});
+
+// Filter change handlers
+document.getElementById('age-filter').addEventListener('change', function() {
+    document.getElementById('filterForm').submit();
+});
+
+document.getElementById('gender-filter').addEventListener('change', function() {
+    document.getElementById('filterForm').submit();
+});
+
+// Patient management functions
+function addPatient() {
+    // Yangi bemor qo'shish sahifasiga o'tish
+    window.location.href = '{% url "add_patient" %}';
+}
+
+function viewPatient(patientId) {
+    // Bemor ma'lumotlarini ko'rish
+    window.location.href = `/patients/${patientId}/`;
+}
+
+function editPatient(patientId) {
+    // Bemor ma'lumotlarini tahrirlash
+    window.location.href = `/patients/update/${patientId}/`;
+}
+
+function deletePatient(patientId) {
+    if (confirm('Haqiqatan ham bu bemorni o\'chirmoqchimisiz?')) {
+        // CSRF token olish
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                         document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        
+        fetch(`/patients/delete/${patientId}/`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            }
+            
+        })
+        .then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Xatolik yuz berdi!');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Xatolik yuz berdi!');
+        });
+    }
+}
+
+function showAllPatients() {
+    window.location.href = '{% url "patients" %}';
+}
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+
+{% endblock %}

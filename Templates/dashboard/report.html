@@ -1,0 +1,715 @@
+{% extends 'base.html' %}
+
+{% block title %}Hisobotlar va Tahlillar - AI Tibbiy Ma'lumotlar Tizimi{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="text-white mb-1">
+                <i class="fas fa-chart-pie me-2"></i>
+                Hisobotlar va Tahlillar
+            </h2>
+            <p class="text-white-50 mb-0">Tibbiy ma'lumotlar va moliyaviy tahlillar</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-success" onclick="generateReport()">
+                <i class="fas fa-file-excel me-2"></i>
+                Hisobot yaratish
+            </button>
+            <button class="btn btn-primary" onclick="scheduleReport()">
+                <i class="fas fa-calendar-alt me-2"></i>
+                Avtomatik hisobot
+            </button>
+        </div>
+    </div>
+
+    <!-- Quick Stats Overview -->
+    <div class="row mb-4">
+        <div class="col-md-2 col-sm-6 mb-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, #4f46e5, #6366f1);">
+                <div class="stat-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-number">{{ total_patients|default:"0" }}</div>
+                <div class="stat-label">Jami bemorlar</div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-6 mb-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, #10b981, #059669);">
+                <div class="stat-icon">
+                    <i class="fas fa-stethoscope"></i>
+                </div>
+                <div class="stat-number">{{ total_consultations|default:"0" }}</div>
+                <div class="stat-label">Konsultatsiyalar</div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-6 mb-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                <div class="stat-icon">
+                    <i class="fas fa-pills"></i>
+                </div>
+                <div class="stat-number">{{ total_prescriptions|default:"0" }}</div>
+                <div class="stat-label">Retseptlar</div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-6 mb-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                <div class="stat-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="stat-number">{{ emergency_cases|default:"0" }}</div>
+                <div class="stat-label">Shoshilinch holatlar</div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-6 mb-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+                <div class="stat-icon">
+                    <i class="fas fa-money-bill-wave"></i>
+                </div>
+                <div class="stat-number">{{ total_revenue|default:"0" }}K</div>
+                <div class="stat-label">Daromad (so'm)</div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-6 mb-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, #0ea5e9, #0284c7);">
+                <div class="stat-icon">
+                    <i class="fas fa-percent"></i>
+                </div>
+                <div class="stat-number">{{ satisfaction_rate|default:"0" }}%</div>
+                <div class="stat-label">Qoniqish darajasi</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Filters -->
+    <div class="glass-card mb-4 p-4">
+        <h5 class="mb-3">
+            <i class="fas fa-filter me-2"></i>
+            Hisobot filtrları
+        </h5>
+        <form method="GET" class="row g-3" id="reportFilters">
+            <div class="col-md-3">
+                <label class="form-label">Hisobot turi</label>
+                <select class="form-select" name="report_type" id="reportType">
+                    <option value="general">Umumiy hisobot</option>
+                    <option value="financial">Moliyaviy hisobot</option>
+                    <option value="medical">Tibbiy hisobot</option>
+                    <option value="patient">Bemorlar hisoboti</option>
+                    <option value="doctor">Shifokorlar hisoboti</option>
+                    <option value="monthly">Oylik hisobot</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Sana oralig'i (dan)</label>
+                <input type="date" class="form-control" name="date_from" value="{{ request.GET.date_from }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Sana oralig'i (gacha)</label>
+                <input type="date" class="form-control" name="date_to" value="{{ request.GET.date_to }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Shifokor</label>
+                <select class="form-select" name="doctor">
+                    <option value="">Barcha shifokorlar</option>
+                    {% for doctor in doctors %}
+                    <option value="{{ doctor.id }}">{{ doctor.full_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary me-2" onclick="loadReport()">
+                    <i class="fas fa-chart-bar me-2"></i>
+                    Hisobotni ko'rsatish
+                </button>
+                <button type="button" class="btn btn-success me-2" onclick="exportReport('excel')">
+                    <i class="fas fa-file-excel me-2"></i>
+                    Excel
+                </button>
+                <button type="button" class="btn btn-danger me-2" onclick="exportReport('pdf')">
+                    <i class="fas fa-file-pdf me-2"></i>
+                    PDF
+                </button>
+                <button type="button" class="btn btn-info" onclick="exportReport('csv')">
+                    <i class="fas fa-file-csv me-2"></i>
+                    CSV
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="row mb-4">
+        <!-- Patient Growth Chart -->
+        <div class="col-md-6 mb-4">
+            <div class="glass-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-line me-2"></i>
+                        Bemorlar o'sish dinamikasi
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="patientGrowthChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Revenue Chart -->
+        <div class="col-md-6 mb-4">
+            <div class="glass-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        Oylik daromad
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="revenueChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Disease Distribution -->
+        <div class="col-md-6 mb-4">
+            <div class="glass-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>
+                        Kasalliklar taqsimoti
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="diseaseChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Age Groups -->
+        <div class="col-md-6 mb-4">
+            <div class="glass-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-doughnut me-2"></i>
+                        Yosh guruhlari
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="ageGroupChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Reports Table -->
+    <div class="glass-card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="fas fa-table me-2"></i>
+                Batafsil hisobot ma'lumotlari
+            </h5>
+            <div class="btn-group">
+                <button class="btn btn-sm btn-outline-light" onclick="toggleView('table')">
+                    <i class="fas fa-table"></i> Jadval
+                </button>
+                <button class="btn btn-sm btn-outline-light" onclick="toggleView('cards')">
+                    <i class="fas fa-th-large"></i> Kartalar
+                </button>
+            </div>
+        </div>
+        <div class="card-body p-0" id="reportContent">
+            <!-- Report content will be loaded here -->
+            <div class="text-center py-5">
+                <i class="fas fa-chart-bar fa-3x text-muted mb-3"></i>
+                <p class="text-muted">Hisobot ko'rish uchun yuqoridagi filtrlarni to'ldiring va "Hisobotni ko'rsatish" tugmasini bosing</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Metrics -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="glass-card p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0">Kunlik o'rtacha bemorlar</h6>
+                    <i class="fas fa-users text-primary"></i>
+                </div>
+                <div class="d-flex align-items-end">
+                    <h3 class="mb-0 me-2">{{ daily_avg_patients|default:"0" }}</h3>
+                    <small class="text-success">
+                        <i class="fas fa-arrow-up"></i> +12%
+                    </small>
+                </div>
+                <small class="text-muted">Oxirgi oy bilan solishtirganda</small>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="glass-card p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0">O'rtacha kutish vaqti</h6>
+                    <i class="fas fa-clock text-warning"></i>
+                </div>
+                <div class="d-flex align-items-end">
+                    <h3 class="mb-0 me-2">{{ avg_waiting_time|default:"0" }} daq</h3>
+                    <small class="text-danger">
+                        <i class="fas fa-arrow-down"></i> -5%
+                    </small>
+                </div>
+                <small class="text-muted">Oxirgi oy bilan solishtirganda</small>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="glass-card p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0">Takroriy tashrillar</h6>
+                    <i class="fas fa-redo text-info"></i>
+                </div>
+                <div class="d-flex align-items-end">
+                    <h3 class="mb-0 me-2">{{ repeat_visits|default:"0" }}%</h3>
+                    <small class="text-success">
+                        <i class="fas fa-arrow-up"></i> +8%
+                    </small>
+                </div>
+                <small class="text-muted">Oxirgi oy bilan solishtirganda</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="glass-card p-4">
+        <h5 class="mb-3">
+            <i class="fas fa-bolt me-2"></i>
+            Tezkor amallar
+        </h5>
+        <div class="row g-3">
+            <div class="col-md-3">
+                <button class="btn btn-outline-primary w-100" onclick="generateQuickReport('daily')">
+                    <i class="fas fa-calendar-day me-2"></i>
+                    Kunlik hisobot
+                </button>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-outline-success w-100" onclick="generateQuickReport('weekly')">
+                    <i class="fas fa-calendar-week me-2"></i>
+                    Haftalik hisobot
+                </button>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-outline-warning w-100" onclick="generateQuickReport('monthly')">
+                    <i class="fas fa-calendar-alt me-2"></i>
+                    Oylik hisobot
+                </button>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-outline-info w-100" onclick="generateQuickReport('yearly')">
+                    <i class="fas fa-calendar me-2"></i>
+                    Yillik hisobot
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Schedule Report Modal -->
+<div class="modal fade" id="scheduleReportModal" tabindex="-1" aria-labelledby="scheduleReportModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content glass-card border-0">
+            <div class="modal-header">
+                <h5 class="modal-title text-white" id="scheduleReportModalLabel">
+                    <i class="fas fa-calendar-alt me-2"></i>
+                    Avtomatik hisobot sozlamalari
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Hisobot turi</label>
+                        <select class="form-select" name="report_type" required>
+                            <option value="daily">Kunlik</option>
+                            <option value="weekly">Haftalik</option>
+                            <option value="monthly">Oylik</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email manzil</label>
+                        <input type="email" class="form-control" name="email" 
+                               placeholder="hisobot@example.com" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Yuborish vaqti</label>
+                        <input type="time" class="form-control" name="send_time" value="09:00" required>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="include_charts" id="includeCharts" checked>
+                        <label class="form-check-label" for="includeCharts">
+                            Diagrammalarni qo'shish
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>
+                        Bekor qilish
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>
+                        Sozlashni saqlash
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script>
+    // Chart configurations
+    let patientGrowthChart, revenueChart, diseaseChart, ageGroupChart;
+
+    // Initialize charts when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeCharts();
+    });
+
+    function initializeCharts() {
+        // Patient Growth Chart
+        const patientCtx = document.getElementById('patientGrowthChart').getContext('2d');
+        patientGrowthChart = new Chart(patientCtx, {
+            type: 'line',
+            data: {
+                labels: ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyun', 'Iyul', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek'],
+                datasets: [{
+                    label: 'Yangi bemorlar',
+                    data: [120, 150, 180, 220, 250, 280, 300, 320, 350, 380, 400, 420],
+                    borderColor: '#4f46e5',
+                    backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Revenue Chart
+        const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+        revenueChart = new Chart(revenueCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyun'],
+                datasets: [{
+                    label: 'Daromad (mln so\'m)',
+                    data: [25, 30, 35, 40, 45, 50],
+                    backgroundColor: 'linear-gradient(135deg, #10b981, #059669)',
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+
+        // Disease Distribution Chart
+        const diseaseCtx = document.getElementById('diseaseChart').getContext('2d');
+        diseaseChart = new Chart(diseaseCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Shamollash', 'Yurak kasalliklari', 'Qon bosimi', 'Diabet', 'Boshqalar'],
+                datasets: [{
+                    data: [30, 25, 20, 15, 10],
+                    backgroundColor: [
+                        '#4f46e5',
+                        '#10b981',
+                        '#f59e0b',
+                        '#ef4444',
+                        '#8b5cf6'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+
+        // Age Groups Chart
+        const ageCtx = document.getElementById('ageGroupChart').getContext('2d');
+        ageGroupChart = new Chart(ageCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['0-18', '19-35', '36-55', '55+'],
+                datasets: [{
+                    data: [20, 35, 30, 15],
+                    backgroundColor: [
+                        '#0ea5e9',
+                        '#10b981',
+                        '#f59e0b',
+                        '#ef4444'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    }
+
+    // Report functions
+    function loadReport() {
+        const formData = new FormData(document.getElementById('reportFilters'));
+        const reportType = formData.get('report_type');
+        
+        // Show loading
+        document.getElementById('reportContent').innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Yuklanmoqda...</span>
+                </div>
+                <p class="mt-3 text-muted">Hisobot tayyorlanmoqda...</p>
+            </div>
+        `;
+        
+        // Make AJAX call to get report data
+        fetch('/reports/data/?' + new URLSearchParams(formData))
+            .then(response => response.json())
+            .then(data => {
+                displayReportData(reportType, data.data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('reportContent').innerHTML = `
+                    <div class="alert alert-danger">
+                        Hisobot yuklashda xatolik yuz berdi. Iltimos, qayta urunib ko'ring.
+                    </div>
+                `;
+            });
+    }
+
+    function displayReportData(reportType, data) {
+        let htmlContent = '';
+        
+        if (reportType === 'financial') {
+            htmlContent = `
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Sana</th>
+                                <th>Jami summa</th>
+                                <th>To'langan</th>
+                                <th>Qarz</th>
+                                <th>Hisoblar soni</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.map(item => `
+                                <tr>
+                                    <td>${item.payment_date}</td>
+                                    <td><span class="text-success fw-semibold">${item.total_amount}</span></td>
+                                    <td><span class="text-success">${item.paid_amount}</span></td>
+                                    <td><span class="text-danger">${item.debt}</span></td>
+                                    <td>${item.count}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        } else if (reportType === 'medical') {
+            htmlContent = `
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Sana</th>
+                                <th>Jami</th>
+                                <th>Karies</th>
+                                <th>Periodontit</th>
+                                <th>Gingivit</th>
+                                <th>Boshqalar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.map(item => `
+                                <tr>
+                                    <td>${item.assessment_date}</td>
+                                    <td>${item.count}</td>
+                                    <td>${item.caries}</td>
+                                    <td>${item.periodontitis}</td>
+                                    <td>${item.gingivitis}</td>
+                                    <td>${item.other}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        } else if (reportType === 'patient') {
+            htmlContent = `
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Sana</th>
+                                <th>Jami</th>
+                                <th>Erkaklar</th>
+                                <th>Ayollar</th>
+                                <th>Boshqa jins</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.map(item => `
+                                <tr>
+                                    <td>${item.visit_date}</td>
+                                    <td>${item.count}</td>
+                                    <td>${item.male}</td>
+                                    <td>${item.female}</td>
+                                    <td>${item.other_gender}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        } else {
+            // General report
+            htmlContent = `
+                <div class="p-4">
+                    <h5 class="mb-3">Oxirgi to'lovlar</h5>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Sana</th>
+                                    <th>Jami summa</th>
+                                    <th>To'langan</th>
+                                    <th>Qarz</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.payments.map(item => `
+                                    <tr>
+                                        <td>${item.payment_date}</td>
+                                        <td><span class="text-success fw-semibold">${item.total_amount}</span></td>
+                                        <td><span class="text-success">${item.paid_amount}</span></td>
+                                        <td><span class="text-danger">${item.debt}</span></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <h5 class="mb-3">Oxirgi bemorlar</h5>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Ism</th>
+                                    <th>Tashrif sanasi</th>
+                                    <th>Jins</th>
+                                    <th>Yosh</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.patients.map(item => `
+                                    <tr>
+                                        <td>${item.full_name}</td>
+                                        <td>${item.visit_date}</td>
+                                        <td>${item.gender}</td>
+                                        <td>${item.age}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <h5 class="mb-3">Oxirgi konsultatsiyalar</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Bemor</th>
+                                    <th>Sana</th>
+                                    <th>Holat</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.assessments.map(item => `
+                                    <tr>
+                                        <td>${item.patient__full_name}</td>
+                                        <td>${item.assessment_date}</td>
+                                        <td>${item.patient_condition}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+        
+        document.getElementById('reportContent').innerHTML = htmlContent;
+    }
+
+    function generateReport() {
+        alert('Hisobot yaratilmoqda... Email orqali yuboriladi.');
+    }
+
+    function scheduleReport() {
+        new bootstrap.Modal(document.getElementById('scheduleReportModal')).show();
+    }
+
+    function exportReport(format) {
+        const reportType = document.querySelector('select[name="report_type"]').value;
+        const dateFrom = document.querySelector('input[name="date_from"]').value;
+        const dateTo = document.querySelector('input[name="date_to"]').value;
+        
+        const url = `/reports/export/${format}/?type=${reportType}&from=${dateFrom}&to=${dateTo}`;
+        window.open(url, '_blank');
+    }
+
+    function generateQuickReport(period) {
+        const url = `/reports/quick/${period}/`;
+        window.open(url, '_blank');
+    }
+
+    function toggleView(viewType) {
+        // Toggle between table and cards view
+        console.log('View changed to:', viewType);
+    }
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+{% endblock %}

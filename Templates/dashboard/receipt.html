@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+
+{% block title %}To'lov kvitansiyasi - {{ payment.id }}{% endblock %}
+
+{% block content %}
+<style>
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+        .receipt-container, .receipt-container * {
+            visibility: visible;
+        }
+        .receipt-container {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+        }
+        .no-print {
+            display: none !important;
+        }
+    }
+    .receipt-container {
+        max-width: 500px;
+        margin: 0 auto;
+        background: white;
+        color: black;
+        padding: 20px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .receipt-header {
+        text-align: center;
+        border-bottom: 2px dashed #ccc;
+        padding-bottom: 15px;
+        margin-bottom: 15px;
+    }
+    .receipt-title {
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    .receipt-subtitle {
+        font-size: 14px;
+        color: #666;
+    }
+    .receipt-info {
+        margin-bottom: 20px;
+    }
+    .receipt-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+    }
+    .receipt-label {
+        font-weight: bold;
+    }
+    .receipt-divider {
+        border-top: 1px dashed #ccc;
+        margin: 15px 0;
+    }
+    .receipt-total {
+        font-size: 18px;
+        font-weight: bold;
+        text-align: right;
+    }
+    .receipt-footer {
+        text-align: center;
+        margin-top: 20px;
+        font-size: 12px;
+        color: #666;
+        border-top: 2px dashed #ccc;
+        padding-top: 15px;
+    }
+</style>
+
+<div class="container mt-4 no-print">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-white">
+            <i class="fas fa-receipt me-2"></i>
+            To'lov kvitansiyasi
+        </h2>
+        <div>
+            <button onclick="window.print()" class="btn btn-primary me-2">
+                <i class="fas fa-print me-2"></i>
+                Chop etish
+            </button>
+            <a href="{% url 'payment' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>
+                Orqaga
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="receipt-container">
+    <!-- Receipt Header -->
+    <div class="receipt-header">
+        <div class="receipt-title">AI Tibbiyot Markazi</div>
+        <div class="receipt-subtitle">To'lov kvitansiyasi</div>
+    </div>
+
+    <!-- Receipt Info -->
+    <div class="receipt-info">
+        <div class="receipt-row">
+            <span class="receipt-label">Kvitansiya raqami:</span>
+            <span>#{{ payment.id }}</span>
+        </div>
+        <div class="receipt-row">
+            <span class="receipt-label">Sana:</span>
+            <span>{{ payment.payment_date|date:"d.m.Y" }}</span>
+        </div>
+    </div>
+
+    <!-- Patient Info -->
+    <div class="receipt-info">
+        <div class="receipt-row">
+            <span class="receipt-label">Bemor:</span>
+            <span>{{ payment.patient.full_name }}</span>
+        </div>
+        <div class="receipt-row">
+            <span class="receipt-label">Telefon:</span>
+            <span>{{ payment.patient.phone_number }}</span>
+        </div>
+    </div>
+
+    <!-- Payment Details -->
+    <div class="receipt-divider"></div>
+    
+    <div class="receipt-row">
+        <span class="receipt-label">Xizmat turi:</span>
+        <span>Tibbiy ko'rik</span>
+    </div>
+    
+    <div class="receipt-row">
+        <span class="receipt-label">Umumiy summa:</span>
+        <span>{{ payment.total_amount|floatformat:2 }} so'm</span>
+    </div>
+    
+    <div class="receipt-row">
+        <span class="receipt-label">To'langan summa:</span>
+        <span>{{ payment.paid_amount|floatformat:2 }} so'm</span>
+    </div>
+    
+    <div class="receipt-row">
+        <span class="receipt-label">Qoldiq qarz:</span>
+        <span>{{ payment.debt|floatformat:2 }} so'm</span>
+    </div>
+    
+    <div class="receipt-row">
+        <span class="receipt-label">To'lov usuli:</span>
+        <span>{{ payment.get_payment_method_display }}</span>
+    </div>
+
+    <div class="receipt-divider"></div>
+    
+    <div class="receipt-total">
+        Jami: {{ payment.paid_amount|floatformat:2 }} so'm
+    </div>
+
+    <!-- Receipt Footer -->
+    <div class="receipt-footer">
+        <div>Qabul qilindi: {% now "d.m.Y H:i" %}</div>
+        <div>Kassir: {{ request.user.get_full_name|default:"Admin" }}</div>
+        <div class="mt-2">Rahmat! Siz bilan hamkorlik qilganimizdan xursandmiz!</div>
+        <div class="mt-1">Telefon: +998 90 123 45 67</div>
+        <div>Manzil: Toshkent shahar, Yunusobod tumani</div>
+    </div>
+</div>
+
+<script>
+    // Automatically trigger print dialog when page loads
+    window.onload = function() {
+        // You can uncomment this to auto-print, but it might annoy users
+        // window.print();
+    };
+</script>
+{% endblock %}
